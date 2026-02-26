@@ -48,7 +48,7 @@ const Landing = () => {
           className="mt-6 text-gray-300 max-w-xl"
         >
           Connect with top companies or hire the best talent easily.
-          A modern job portal built with MERN Stack.
+          
         </motion.p>
 
         <motion.div
@@ -57,12 +57,7 @@ const Landing = () => {
           transition={{ delay: 0.8 }}
           className="mt-10 flex space-x-6"
         >
-          <Link
-            to="/home"
-            className="px-8 py-3 bg-indigo-600 rounded-2xl shadow-xl hover:scale-105 hover:bg-indigo-700 transition duration-300"
-          >
-            Browse Jobs
-          </Link>
+          
 
           <Link
             to="/register"
