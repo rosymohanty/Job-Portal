@@ -1,22 +1,22 @@
 import axios from "axios";
 import toast from "react-hot-toast";
 
-// ✅ Environment-based API URL
-const API =
+// ✅ Backend URL
+const BASE_URL =
   import.meta.env.MODE === "development"
     ? "http://localhost:4000"
-    : import.meta.env.VITE_API_URL;
+    : import.meta.env.VITE_API_URL || "https://job-portal-jtt0.onrender.com";
 
-// ✅ Create Axios Instance
-const instance = axios.create({
-  baseURL: `${API}/api`,
+// ✅ Axios Instance
+const axiosInstance = axios.create({
+  baseURL: `${BASE_URL}/api`,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// 🔐 Request Interceptor (Attach Token Automatically)
-instance.interceptors.request.use(
+// 🔐 Attach Token Automatically
+axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
 
@@ -29,29 +29,27 @@ instance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ⚠️ Response Interceptor (Global Error Handling)
-instance.interceptors.response.use(
+// 🌍 Global Error Handling
+axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response) {
-      // 🔴 Unauthorized (Token Expired)
+      const message =
+        error.response.data?.message || "Something went wrong";
+
+      toast.error(message);
+
+      // If token expired
       if (error.response.status === 401) {
-        localStorage.clear();
-        toast.error("Session expired. Please login again.");
+        localStorage.removeItem("token");
         window.location.href = "/login";
       }
-
-      // 🔴 Server Error
-      if (error.response.status === 500) {
-        toast.error("Server error. Please try again later.");
-      }
     } else {
-      // 🔴 Network Error
-      toast.error("Network error. Check your connection.");
+      toast.error("Network error. Backend might be sleeping.");
     }
 
     return Promise.reject(error);
   }
 );
 
-export default instance;
+export default axiosInstance;
