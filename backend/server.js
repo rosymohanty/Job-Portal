@@ -14,4 +14,7 @@ app.use("/api/jobs",jobRoute);
 app.use("/api/admin", require("./routes/adminRoutes"));
 app.use("/uploads",express.static("uploads"));
 const PORT=process.env.PORT||4000;
+app.get("/", (req, res) => {
+  res.send("Job Portal API is running...");
+});
 app.listen(PORT,()=>console.log(`Server running on port ${PORT}`));
