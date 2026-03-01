@@ -270,54 +270,62 @@ const viewApplicants=async(req,res)=>{
 // CHANGE APPLICATION STATUS
 const changeApplicationStatus = async (req, res) => {
   try {
-  const applicationId = req.params.id;
-  const employerId = req.user._id;
-  const { status } = req.body;   // ✅ ONLY THIS ONE
+    const applicationId = req.params.id;
+    const employerId = req.user._id;
+    const { status } = req.body;
 
-  const validStatuses = [
-    "Pending",
-    "Reviewed",
-    "Shortlisted",
-    "Accepted",
-    "Rejected",
-  ];
+    // Log everything
+    console.log("1. Application ID:", applicationId);
+    console.log("2. Employer ID:", employerId);
+    console.log("3. Status:", status);
+    console.log("4. Body:", req.body);
 
-  if (!validStatuses.includes(status)) {
-    return res.status(400).json({
-      message: "Invalid status value",
+    // Validate status
+    const validStatuses = ["Pending", "Reviewed", "Shortlisted", "Accepted", "Rejected"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: "Invalid status" });
+    }
+
+    // Find application
+    const application = await Application.findById(applicationId);
+    console.log("5. Application found:", application ? "Yes" : "No");
+
+    if (!application) {
+      return res.status(404).json({ message: "Application not found" });
+    }
+
+    // Populate job
+    await application.populate("job");
+    console.log("6. Job populated:", application.job ? "Yes" : "No");
+
+    if (!application.job) {
+      return res.status(400).json({ message: "Job not found" });
+    }
+
+    console.log("7. Job employer:", application.job.employer);
+    console.log("8. Comparing:", application.job.employer.toString(), "vs", employerId.toString());
+
+    // Check authorization
+    if (application.job.employer.toString() !== employerId.toString()) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    // Update and save
+    application.status = status;
+    const saved = await application.save();
+    console.log("9. Saved successfully:", saved ? "Yes" : "No");
+
+    res.status(200).json({ message: "Success", application: saved });
+
+  } catch (error) {
+    console.error("ERROR DETAILS:", {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+      code: error.code
     });
+    res.status(500).json({ message: error.message });
   }
-
-  const application = await Application.findById(applicationId).populate("job");
-
-  if (!application) {
-    return res.status(404).json({ message: "Application not found" });
-  }
-
-  if (!application.job) {
-    return res.status(400).json({
-      message: "Associated job not found",
-    });
-  }
-
-  if (application.job.employer.toString() !== employerId.toString()) {
-    return res.status(403).json({
-      message: "You are not authorized to update this application",
-    });
-  }
-
-  application.status = status;
-  await application.save();
-
-  res.status(200).json({
-    message: "Application status updated successfully",
-    application,
-  });
-
-} catch (error) {
-  console.error("Status Change Error:", error);
-  res.status(500).json({ message: error.message });
-}
 };
 // EMPLOYER DASHBOARD STATS
 const employerDashboardStats = async (req, res) => {
