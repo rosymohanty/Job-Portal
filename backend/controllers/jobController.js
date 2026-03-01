@@ -2,6 +2,7 @@ const Job=require("../models/Job");
 const User=require("../models/User");
 const mongoose=require("mongoose");
 const Application=require("../models/Application");
+
 // GET ALL JOBS 
 const getAllJobs = async (req, res) => {
   try {
@@ -253,34 +254,34 @@ const viewApplicants=async(req,res)=>{
 // CHANGE APPLICATION STATUS
 const updateApplicationStatus = async (req, res) => {
   try {
-    const {applicationId}=req.params;
-    const {newStatus}=req.body;
-    const application=await Application.findById(applicationId);
-    if(!application){
-      return res.status(404).json({message:"Application not found"});
+    const { id } = req.params;
+    const { newStatus } = req.body;
+    const application = await Application.findById(id);
+    if (!application) {
+      return res.status(404).json({ message: "Application not found" });
     }
-      if(application.employer.toString()!==req.user._id.toString()){
-        return res.status(403).json({message:"Not authorized"});
-      }
-      const currentStatus=application.status;
-      if(!allowedTransitions[currentStatus].includes(newStatus)){
-        return res.status(400).json({
-          message:`Cannot change from ${currentStatus} to ${newStatus}`,
-        });
-      }
-      application.status=newStatus;
-      application.statusHistory.push({
-        status:newStatus,
-        changedBy:req.user._id,
+    if (application.employer.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+    const currentStatus = application.status;
+    if (!allowedTransitions[currentStatus].includes(newStatus)) {
+      return res.status(400).json({
+        message: `Cannot change from ${currentStatus} to ${newStatus}`,
       });
-      await application.save();
-      res.json({
-        success:true,
-        message:"Status updated",
-        application,
-      });
-    }catch(error){
-      res.status(500).json({message:error.message});
+    }
+    application.status = newStatus;
+    application.statusHistory.push({
+      status: newStatus,
+      changedBy: req.user._id,
+    });
+    await application.save();
+    res.json({
+      success: true,
+      message: "Status updated",
+      application,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 // EMPLOYER DASHBOARD STATS
