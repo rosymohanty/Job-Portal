@@ -874,81 +874,37 @@ const getSavedJobs = async (req, res) => {
 // @desc    Change application status
 // @route   PUT /api/jobs/employer/applications/:id/status
 // @access  Private (Employer only)
-const changeApplicationStatus = async (req, res) => {
+const checkApplicationStatus = async (req, res) => {
   try {
-    const applicationId = req.params.id;
-    const employerId = req.user._id;
-    const { status } = req.body;
+    const userId = req.user._id;
+    const jobId = req.params.id;
 
-    console.log("1. Application ID:", applicationId);
-    console.log("2. Employer ID:", employerId);
-    console.log("3. Status:", status);
-
-    // Validate status
-    const validStatuses = ["Pending", "Reviewed", "Shortlisted", "Accepted", "Rejected"];
-    if (!validStatuses.includes(status)) {
+    if (!mongoose.Types.ObjectId.isValid(jobId)) {
       return res.status(400).json({ 
         success: false,
-        message: "Invalid status. Valid statuses: " + validStatuses.join(", ")
+        message: "Invalid job ID" 
       });
     }
 
-    // Find application and populate job
-    const application = await Application.findById(applicationId)
-      .populate("job");
-
-    console.log("4. Application found:", application ? "Yes" : "No");
-
-    if (!application) {
-      return res.status(404).json({ 
-        success: false,
-        message: "Application not found" 
-      });
-    }
-
-    console.log("5. Job employer:", application.job?.employer);
-    console.log("6. Comparing:", application.job?.employer?.toString(), "vs", employerId.toString());
-
-    // Check if job exists
-    if (!application.job) {
-      return res.status(400).json({ 
-        success: false,
-        message: "Associated job not found" 
-      });
-    }
-
-    // Check authorization
-    if (application.job.employer.toString() !== employerId.toString()) {
-      return res.status(403).json({ 
-        success: false,
-        message: "You are not authorized to update this application" 
-      });
-    }
-
-    // Update status
-    application.status = status;
-    const savedApplication = await application.save();
-
-    console.log("7. Status updated successfully");
+    const application = await Application.findOne({
+      job: jobId,
+      applicant: userId,
+    });
 
     res.status(200).json({
       success: true,
-      message: `Application status updated to ${status}`,
-      application: {
-        _id: savedApplication._id,
-        status: savedApplication.status
-      }
+      hasApplied: !!application,
+      application: application ? {
+        _id: application._id,
+        status: application.status,
+        appliedAt: application.createdAt,
+      } : null,
     });
-
   } catch (error) {
-    console.error("❌ Status update error:", error);
-    console.error("Error name:", error.name);
-    console.error("Error message:", error.message);
-    console.error("Error stack:", error.stack);
-    
+    console.error("Check application status error:", error);
     res.status(500).json({ 
       success: false,
-      message: error.message || "Failed to update application status"
+      message: "Failed to check application status" 
     });
   }
 };
@@ -967,5 +923,5 @@ module.exports = {
   employerDashboardStats,
   saveJob,
   getSavedJobs,
-  changeApplicationStatus,
+  checkApplicationStatus,
 };

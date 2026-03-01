@@ -15,9 +15,7 @@ const {
   employerDashboardStats,
   saveJob,
   getSavedJobs,
-  checkApplicationStatus,
-  getJobStats,           // Added for stats overview
-  getFeaturedJobs        // Added for featured jobs
+  checkApplicationStatus
 } = require("../controllers/jobController");
 
 const { protect, authorizeRoles } = require("../middleware/authMiddleware");
@@ -25,8 +23,6 @@ const { protect, authorizeRoles } = require("../middleware/authMiddleware");
 // ================= PUBLIC ROUTES (No Authentication Required) =================
 router.get("/", getAllJobs);
 router.get("/:id", getSingleJob);
-router.get("/stats/overview", getJobStats);              // Get job statistics
-router.get("/featured/limit/:count", getFeaturedJobs);   // Get featured jobs
 
 // ================= USER ROUTES (Job Seekers Only) =================
 router.get("/applied/me", protect, authorizeRoles("user"), viewAppliedJobs);
