@@ -53,7 +53,6 @@ const applyForJob = async (req, res) => {
     }
 
     const job = await Job.findById(jobId);
-
     if (!job || !job.isActive) {
       return res.status(404).json({ message: "Job not found or inactive" });
     }
@@ -72,13 +71,16 @@ const applyForJob = async (req, res) => {
     const application = await Application.create({
       job: jobId,
       applicant: userId,
+      employer: job.employer,
     });
 
     res.status(201).json({
+      success: true,
       message: "Job applied successfully",
       application,
     });
   } catch (error) {
+    console.error("Apply Error:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -248,11 +250,17 @@ const viewApplicants=async(req,res)=>{
 // CHANGE APPLICATION STATUS
 const changeApplicationStatus = async (req, res) => {
   try {
-    const employerId = req.user._id;
     const applicationId = req.params.id;
     const { status } = req.body;
+    const employerId = req.user._id;
 
-    const validStatuses = ["Pending", "Reviewed", "Accepted", "Rejected"];
+    const validStatuses = [
+      "Pending",
+      "Reviewed",
+      "Shortlisted",
+      "Accepted",
+      "Rejected",
+    ];
 
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
@@ -264,12 +272,6 @@ const changeApplicationStatus = async (req, res) => {
 
     if (!application) {
       return res.status(404).json({ message: "Application not found" });
-    }
-
-    if (!application.job) {
-      return res.status(400).json({
-        message: "Associated job not found"
-      });
     }
 
     if (application.job.employer.toString() !== employerId.toString()) {
@@ -285,7 +287,6 @@ const changeApplicationStatus = async (req, res) => {
       message: "Application status updated successfully",
       application,
     });
-
   } catch (error) {
     console.error("Status Change Error:", error);
     res.status(500).json({ message: error.message });

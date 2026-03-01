@@ -1,26 +1,39 @@
-const mongoose=require("mongoose");
-const applicationSchema=new mongoose.Schema(
+const mongoose = require("mongoose");
+
+const applicationSchema = new mongoose.Schema(
   {
-    job:{
-      type:mongoose.Schema.Types.ObjectId,
-      ref:"Job",
-      required:true,
+    job: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Job",
+      required: true,
     },
-    applicant:{
-      type:mongoose.Schema.Types.ObjectId,
-      ref:"User",
-      required:true,
+
+    applicant: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
     },
-    resume:{
-      type:String,
+
+    employer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
     },
+
+    resume: {
+      type: String,
+    },
+
     status: {
-  type: String,
-  enum: ["Pending", "Reviewed", "Shortlisted", "Accepted", "Rejected"],
-  default: "Pending"
-}
+      type: String,
+      enum: ["Pending", "Reviewed", "Shortlisted", "Accepted", "Rejected"],
+      default: "Pending",
+    },
   },
-  {timestamps:true}
+  { timestamps: true }
 );
+
+// Prevent duplicate applications
 applicationSchema.index({ job: 1, applicant: 1 }, { unique: true });
-module.exports=mongoose.model("Application",applicationSchema);
+
+module.exports = mongoose.model("Application", applicationSchema);
