@@ -30,6 +30,12 @@ const getAllJobs = async (req, res) => {
     if (jobType && jobType !== "all") {
       filter.jobType = jobType;
     }
+    
+    // Filter by salary range (if needed)
+    if (salary) {
+      // Assuming salary is stored as string like "50k-80k" or "50000-80000"
+      // This is simplified - you might want to store numeric min/max instead
+    }
 
     // Pagination
     const pageNum = parseInt(page);
@@ -90,7 +96,7 @@ const getSingleJob = async (req, res) => {
       });
     }
 
-    // Increment view count
+    // Increment view count (if you have this field)
     await Job.findByIdAndUpdate(id, { $inc: { views: 1 } });
 
     res.status(200).json({
@@ -183,7 +189,7 @@ const applyForJob = async (req, res) => {
       applicant: userId,
       employer: job.employer,
       status: "Pending",
-      resume: user.resume,
+      resume: user.resume, // Include resume path
     });
 
     res.status(201).json({
@@ -214,7 +220,7 @@ const applyForJob = async (req, res) => {
 };
 
 // @desc    View applied jobs for current user
-// @route   GET /api/jobs/applied/me
+// @route   GET /api/jobs/applied
 // @access  Private (User only)
 const viewAppliedJobs = async (req, res) => {
   try {
@@ -262,7 +268,7 @@ const viewAppliedJobs = async (req, res) => {
 };
 
 // @desc    Post a new job (Employer only)
-// @route   POST /api/jobs/employer/jobs
+// @route   POST /api/jobs
 // @access  Private (Employer only)
 const postJob = async (req, res) => {
   try {
@@ -316,7 +322,7 @@ const postJob = async (req, res) => {
 };
 
 // @desc    Update a job (Employer only)
-// @route   PUT /api/jobs/employer/jobs/:id
+// @route   PUT /api/jobs/:id
 // @access  Private (Employer only)
 const updateJob = async (req, res) => {
   try {
@@ -378,7 +384,7 @@ const updateJob = async (req, res) => {
 };
 
 // @desc    Delete a job (Employer only)
-// @route   DELETE /api/jobs/employer/jobs/:id
+// @route   DELETE /api/jobs/:id
 // @access  Private (Employer only)
 const deleteJob = async (req, res) => {
   try {
@@ -430,7 +436,7 @@ const deleteJob = async (req, res) => {
 };
 
 // @desc    Get jobs posted by current employer
-// @route   GET /api/jobs/employer/jobs
+// @route   GET /api/jobs/my-jobs
 // @access  Private (Employer only)
 const getMyPostedJobs = async (req, res) => {
   try {
@@ -491,7 +497,7 @@ const getMyPostedJobs = async (req, res) => {
 };
 
 // @desc    View applicants for a specific job
-// @route   GET /api/jobs/employer/jobs/:id/applicants
+// @route   GET /api/jobs/:id/applicants
 // @access  Private (Employer only)
 const viewApplicants = async (req, res) => {
   try {
@@ -576,17 +582,13 @@ const viewApplicants = async (req, res) => {
 };
 
 // @desc    Change application status
-// @route   PUT /api/jobs/employer/applications/:id/status
+// @route   PUT /api/jobs/applications/:id/status
 // @access  Private (Employer only)
 const changeApplicationStatus = async (req, res) => {
   try {
     const applicationId = req.params.id;
     const employerId = req.user._id;
     const { status, notes } = req.body;
-
-    console.log("1. Application ID:", applicationId);
-    console.log("2. Employer ID:", employerId);
-    console.log("3. Status:", status);
 
     // Validate status
     const validStatuses = ["Pending", "Reviewed", "Shortlisted", "Accepted", "Rejected"];
@@ -605,11 +607,9 @@ const changeApplicationStatus = async (req, res) => {
       });
     }
 
-    // Find application and populate job
+    // Find application
     const application = await Application.findById(applicationId)
       .populate("job");
-
-    console.log("4. Application found:", application ? "Yes" : "No");
 
     if (!application) {
       return res.status(404).json({ 
@@ -618,10 +618,6 @@ const changeApplicationStatus = async (req, res) => {
       });
     }
 
-    console.log("5. Job employer:", application.job?.employer);
-    console.log("6. Comparing:", application.job?.employer?.toString(), "vs", employerId.toString());
-
-    // Check if job exists
     if (!application.job) {
       return res.status(400).json({ 
         success: false,
@@ -643,35 +639,34 @@ const changeApplicationStatus = async (req, res) => {
       application.notes = notes;
     }
 
-    const savedApplication = await application.save();
+    // If status is "Accepted" or "Shortlisted", you might want to add interview logic
+    if (status === "Accepted" || status === "Shortlisted") {
+      // You could send an email notification here
+    }
 
-    console.log("7. Status updated successfully");
+    await application.save();
 
     res.status(200).json({
       success: true,
       message: `Application status updated to ${status}`,
       application: {
-        _id: savedApplication._id,
-        status: savedApplication.status,
-        job: savedApplication.job.title,
-      }
+        _id: application._id,
+        status: application.status,
+        job: application.job.title,
+        applicant: application.applicant,
+      },
     });
-
   } catch (error) {
-    console.error("❌ Status update error:", error);
-    console.error("Error name:", error.name);
-    console.error("Error message:", error.message);
-    console.error("Error stack:", error.stack);
-    
+    console.error("Change application status error:", error);
     res.status(500).json({ 
       success: false,
-      message: error.message || "Failed to update application status"
+      message: "Failed to update application status" 
     });
   }
 };
 
 // @desc    Get employer dashboard statistics
-// @route   GET /api/jobs/employer/dashboard
+// @route   GET /api/jobs/employer/stats
 // @access  Private (Employer only)
 const employerDashboardStats = async (req, res) => {
   try {
@@ -837,7 +832,7 @@ const getSavedJobs = async (req, res) => {
     const user = await User.findById(req.user._id)
       .populate({
         path: "savedJobs",
-        match: { isActive: true },
+        match: { isActive: true }, // Only show active jobs
         options: {
           sort: { createdAt: -1 },
           skip: (pageNum - 1) * limitNum,
@@ -876,95 +871,88 @@ const getSavedJobs = async (req, res) => {
 // @desc    Check if user has applied to a job
 // @route   GET /api/jobs/:id/check-application
 // @access  Private
-const checkApplicationStatus = async (req, res) => {
+// @desc    Change application status
+// @route   PUT /api/jobs/employer/applications/:id/status
+// @access  Private (Employer only)
+const changeApplicationStatus = async (req, res) => {
   try {
-    const userId = req.user._id;
-    const jobId = req.params.id;
+    const applicationId = req.params.id;
+    const employerId = req.user._id;
+    const { status } = req.body;
 
-    if (!mongoose.Types.ObjectId.isValid(jobId)) {
+    console.log("1. Application ID:", applicationId);
+    console.log("2. Employer ID:", employerId);
+    console.log("3. Status:", status);
+
+    // Validate status
+    const validStatuses = ["Pending", "Reviewed", "Shortlisted", "Accepted", "Rejected"];
+    if (!validStatuses.includes(status)) {
       return res.status(400).json({ 
         success: false,
-        message: "Invalid job ID" 
+        message: "Invalid status. Valid statuses: " + validStatuses.join(", ")
       });
     }
 
-    const application = await Application.findOne({
-      job: jobId,
-      applicant: userId,
-    });
+    // Find application and populate job
+    const application = await Application.findById(applicationId)
+      .populate("job");
+
+    console.log("4. Application found:", application ? "Yes" : "No");
+
+    if (!application) {
+      return res.status(404).json({ 
+        success: false,
+        message: "Application not found" 
+      });
+    }
+
+    console.log("5. Job employer:", application.job?.employer);
+    console.log("6. Comparing:", application.job?.employer?.toString(), "vs", employerId.toString());
+
+    // Check if job exists
+    if (!application.job) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Associated job not found" 
+      });
+    }
+
+    // Check authorization
+    if (application.job.employer.toString() !== employerId.toString()) {
+      return res.status(403).json({ 
+        success: false,
+        message: "You are not authorized to update this application" 
+      });
+    }
+
+    // Update status
+    application.status = status;
+    const savedApplication = await application.save();
+
+    console.log("7. Status updated successfully");
 
     res.status(200).json({
       success: true,
-      hasApplied: !!application,
-      application: application ? {
-        status: application.status,
-        appliedAt: application.createdAt,
-      } : null,
-    });
-  } catch (error) {
-    console.error("Check application status error:", error);
-    res.status(500).json({ 
-      success: false,
-      message: "Failed to check application status" 
-    });
-  }
-};
-
-// @desc    Get job statistics overview
-// @route   GET /api/jobs/stats/overview
-// @access  Public
-const getJobStats = async (req, res) => {
-  try {
-    const totalJobs = await Job.countDocuments();
-    const activeJobs = await Job.countDocuments({ isActive: true });
-    const jobsByType = await Job.aggregate([
-      { $group: { _id: "$jobType", count: { $sum: 1 } } }
-    ]);
-    
-    res.status(200).json({
-      success: true,
-      stats: {
-        total: totalJobs,
-        active: activeJobs,
-        byType: jobsByType
+      message: `Application status updated to ${status}`,
+      application: {
+        _id: savedApplication._id,
+        status: savedApplication.status
       }
     });
+
   } catch (error) {
-    console.error("Error fetching job stats:", error);
+    console.error("❌ Status update error:", error);
+    console.error("Error name:", error.name);
+    console.error("Error message:", error.message);
+    console.error("Error stack:", error.stack);
+    
     res.status(500).json({ 
-      success: false, 
-      message: error.message 
+      success: false,
+      message: error.message || "Failed to update application status"
     });
   }
 };
 
-// @desc    Get featured jobs
-// @route   GET /api/jobs/featured/limit/:count
-// @access  Public
-const getFeaturedJobs = async (req, res) => {
-  try {
-    const limit = parseInt(req.params.count) || 3;
-    
-    const jobs = await Job.find({ isActive: true })
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .populate("employer", "name companyName")
-      .lean();
-    
-    res.status(200).json({
-      success: true,
-      jobs
-    });
-  } catch (error) {
-    console.error("Error fetching featured jobs:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
-    });
-  }
-};
-
-// ==================== MODULE EXPORTS ====================
 module.exports = {
   getAllJobs,
   getSingleJob,
@@ -975,11 +963,9 @@ module.exports = {
   deleteJob,
   getMyPostedJobs,
   viewApplicants,
-  changeApplicationStatus,  // Single definition
+  changeApplicationStatus,
   employerDashboardStats,
   saveJob,
   getSavedJobs,
-  checkApplicationStatus,
-  getJobStats,
-  getFeaturedJobs
+  changeApplicationStatus,
 };
