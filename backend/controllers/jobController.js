@@ -2,7 +2,14 @@ const Job=require("../models/Job");
 const User=require("../models/User");
 const mongoose=require("mongoose");
 const Application=require("../models/Application");
-
+const allowedTransitions={
+  Applied:["Under Review","Rejected"],
+  "Under Review":["Shortlisted","Rejected"],
+  Shortlisted:["Interview Scheduled","Rejected"],
+  "Interview Scheduled":["Selected","Rejected"],
+  Selected:[],
+  Rejected:[],
+};
 // GET ALL JOBS 
 const getAllJobs = async (req, res) => {
   try {
@@ -46,14 +53,9 @@ const getSingleJob = async (req, res) => {
 // APPLY FOR JOB
 const applyForJob = async (req, res) => {
   try {
-    const jobId = req.params.id; // ✅ FIXED
-
-    if (!jobId) {
-      return res.status(400).json({ message: "Job ID is required" });
-    }
+    const jobId = req.params.id;
 
     const job = await Job.findById(jobId);
-
     if (!job) {
       return res.status(404).json({ message: "Job not found" });
     }
@@ -70,7 +72,8 @@ const applyForJob = async (req, res) => {
     const application = await Application.create({
       job: jobId,
       applicant: req.user._id,
-      employer: job.postedBy,
+      employer: job.postedBy,     // ✅ VERY IMPORTANT
+      status: "Applied",
       statusHistory: [
         {
           status: "Applied",
@@ -81,10 +84,12 @@ const applyForJob = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "Application submitted",
+      message: "Application submitted successfully",
       application,
     });
+
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -256,31 +261,50 @@ const updateApplicationStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { newStatus } = req.body;
+
+    if (!newStatus) {
+      return res.status(400).json({ message: "New status is required" });
+    }
+
     const application = await Application.findById(id);
+
     if (!application) {
       return res.status(404).json({ message: "Application not found" });
     }
+
+    // 🔐 Employer Authorization
     if (application.employer.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: "Not authorized" });
     }
+
     const currentStatus = application.status;
-    if (!allowedTransitions[currentStatus].includes(newStatus)) {
+
+    if (
+      !allowedTransitions[currentStatus] ||
+      !allowedTransitions[currentStatus].includes(newStatus)
+    ) {
       return res.status(400).json({
         message: `Cannot change from ${currentStatus} to ${newStatus}`,
       });
     }
+
     application.status = newStatus;
+
     application.statusHistory.push({
       status: newStatus,
       changedBy: req.user._id,
     });
+
     await application.save();
+
     res.json({
       success: true,
-      message: "Status updated",
+      message: "Status updated successfully",
       application,
     });
+
   } catch (error) {
+    console.error("Status Update Error:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -446,6 +470,7 @@ module.exports = {
   deleteJob,
   getMyPostedJobs,
   viewApplicants,
+  allowedTransitions,
   updateApplicationStatus,
   employerDashboardStats,
   saveJob,
