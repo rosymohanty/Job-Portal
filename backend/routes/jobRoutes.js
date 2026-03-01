@@ -15,34 +15,29 @@ const {
   employerDashboardStats,
   saveJob,
   getSavedJobs,
-  checkApplicationStatus
+  checkApplicationStatus  // Added missing import
 } = require("../controllers/jobController");
 
 const { protect, authorizeRoles } = require("../middleware/authMiddleware");
 
-// ================= PUBLIC ROUTES (No Authentication Required) =================
+// ================= PUBLIC ROUTES =================
 router.get("/", getAllJobs);
-router.get("/:id", getSingleJob);
+router.get("/:id", getSingleJob); // MOVED UP - important!
 
-// ================= USER ROUTES (Job Seekers Only) =================
+// ================= USER ROUTES =================
 router.get("/applied/me", protect, authorizeRoles("user"), viewAppliedJobs);
-router.get("/saved", protect, authorizeRoles("user"), getSavedJobs);
 router.get("/:id/application-status", protect, authorizeRoles("user"), checkApplicationStatus);
 router.post("/:id/apply", protect, authorizeRoles("user"), applyForJob);
 router.post("/:id/save", protect, authorizeRoles("user"), saveJob);
+router.get("/saved", protect, authorizeRoles("user"), getSavedJobs);
 
-// ================= EMPLOYER ROUTES (Employers Only) =================
-// Dashboard
+// ================= EMPLOYER ROUTES =================
 router.get("/employer/dashboard", protect, authorizeRoles("employer"), employerDashboardStats);
-
-// Job management
 router.get("/employer/jobs", protect, authorizeRoles("employer"), getMyPostedJobs);
+router.get("/employer/jobs/:id/applicants", protect, authorizeRoles("employer"), viewApplicants);
 router.post("/employer/jobs", protect, authorizeRoles("employer"), postJob);
 router.put("/employer/jobs/:id", protect, authorizeRoles("employer"), updateJob);
 router.delete("/employer/jobs/:id", protect, authorizeRoles("employer"), deleteJob);
-
-// Applicant management
-router.get("/employer/jobs/:id/applicants", protect, authorizeRoles("employer"), viewApplicants);
 router.put("/employer/applications/:id/status", protect, authorizeRoles("employer"), changeApplicationStatus);
 
 module.exports = router;

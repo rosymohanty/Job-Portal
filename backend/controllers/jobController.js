@@ -871,9 +871,6 @@ const getSavedJobs = async (req, res) => {
 // @desc    Check if user has applied to a job
 // @route   GET /api/jobs/:id/check-application
 // @access  Private
-// @desc    Change application status
-// @route   PUT /api/jobs/employer/applications/:id/status
-// @access  Private (Employer only)
 const checkApplicationStatus = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -895,7 +892,6 @@ const checkApplicationStatus = async (req, res) => {
       success: true,
       hasApplied: !!application,
       application: application ? {
-        _id: application._id,
         status: application.status,
         appliedAt: application.createdAt,
       } : null,
