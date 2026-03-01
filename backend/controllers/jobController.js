@@ -252,7 +252,7 @@ const changeApplicationStatus = async (req, res) => {
   try {
     const applicationId = req.params.id;
     const employerId = req.user._id;
-    const { status } = req.body;
+    const { status } = req.body;   // ✅ Declare ONLY ONCE
 
     const validStatuses = [
       "Pending",
@@ -293,6 +293,7 @@ const changeApplicationStatus = async (req, res) => {
       message: "Application status updated successfully",
       application,
     });
+
   } catch (error) {
     console.error("Status Change Error:", error);
     res.status(500).json({ message: error.message });
