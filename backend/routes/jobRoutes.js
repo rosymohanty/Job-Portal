@@ -14,8 +14,7 @@ const {
   changeApplicationStatus,
   employerDashboardStats,
   saveJob,
-  getSavedJobs,
-  getApplicationTimeline
+  getSavedJobs
 } = require("../controllers/jobController");
 
 const { protect, authorizeRoles } = require("../middleware/authMiddleware");
