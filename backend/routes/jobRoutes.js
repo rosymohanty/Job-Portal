@@ -11,7 +11,7 @@ const {
   deleteJob,
   getMyPostedJobs,
   viewApplicants,
-  updateApplicationStatus,
+  changeApplicationStatus,
   employerDashboardStats,
   saveJob,
   getSavedJobs,
@@ -61,11 +61,7 @@ router.get(
 );
 
 // Get Application Timeline (VERY IMPORTANT: keep above /:id)
-router.get(
-  "/applications/:applicationId/timeline",
-  protect,
-  getApplicationTimeline
-);
+
 
 
 // ================= EMPLOYER ROUTES =================
@@ -123,7 +119,7 @@ router.put(
   "/applications/:id/status",
   protect,
   authorizeRoles("employer"),
-  updateApplicationStatus
+  changeApplicationStatus
 );
 
 

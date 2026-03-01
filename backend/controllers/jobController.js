@@ -250,54 +250,54 @@ const viewApplicants=async(req,res)=>{
 // CHANGE APPLICATION STATUS
 const changeApplicationStatus = async (req, res) => {
   try {
-    const applicationId = req.params.id;
-    const employerId = req.user._id;
-    const { status } = req.body;   // ✅ Declare ONLY ONCE
+  const applicationId = req.params.id;
+  const employerId = req.user._id;
+  const { status } = req.body;   // ✅ ONLY THIS ONE
 
-    const validStatuses = [
-      "Pending",
-      "Reviewed",
-      "Shortlisted",
-      "Accepted",
-      "Rejected",
-    ];
+  const validStatuses = [
+    "Pending",
+    "Reviewed",
+    "Shortlisted",
+    "Accepted",
+    "Rejected",
+  ];
 
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({
-        message: "Invalid status value",
-      });
-    }
-
-    const application = await Application.findById(applicationId).populate("job");
-
-    if (!application) {
-      return res.status(404).json({ message: "Application not found" });
-    }
-
-    if (!application.job) {
-      return res.status(400).json({
-        message: "Associated job not found",
-      });
-    }
-
-    if (application.job.employer.toString() !== employerId.toString()) {
-      return res.status(403).json({
-        message: "You are not authorized to update this application",
-      });
-    }
-
-    application.status = status;
-    await application.save();
-
-    res.status(200).json({
-      message: "Application status updated successfully",
-      application,
+  if (!validStatuses.includes(status)) {
+    return res.status(400).json({
+      message: "Invalid status value",
     });
-
-  } catch (error) {
-    console.error("Status Change Error:", error);
-    res.status(500).json({ message: error.message });
   }
+
+  const application = await Application.findById(applicationId).populate("job");
+
+  if (!application) {
+    return res.status(404).json({ message: "Application not found" });
+  }
+
+  if (!application.job) {
+    return res.status(400).json({
+      message: "Associated job not found",
+    });
+  }
+
+  if (application.job.employer.toString() !== employerId.toString()) {
+    return res.status(403).json({
+      message: "You are not authorized to update this application",
+    });
+  }
+
+  application.status = status;
+  await application.save();
+
+  res.status(200).json({
+    message: "Application status updated successfully",
+    application,
+  });
+
+} catch (error) {
+  console.error("Status Change Error:", error);
+  res.status(500).json({ message: error.message });
+}
 };
 // EMPLOYER DASHBOARD STATS
 const employerDashboardStats = async (req, res) => {
