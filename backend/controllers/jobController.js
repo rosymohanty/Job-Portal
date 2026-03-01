@@ -43,6 +43,7 @@ const getSingleJob = async (req, res) => {
   }
 };
 // APPLY FOR JOB
+// APPLY FOR JOB - FIXED VERSION
 const applyForJob = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -57,6 +58,7 @@ const applyForJob = async (req, res) => {
       return res.status(404).json({ message: "Job not found or inactive" });
     }
 
+    // Check if already applied
     const alreadyApplied = await Application.findOne({
       job: jobId,
       applicant: userId,
@@ -68,10 +70,19 @@ const applyForJob = async (req, res) => {
       });
     }
 
+    // IMPORTANT: Verify employer exists
+    if (!job.employer) {
+      return res.status(400).json({ 
+        message: "Job has no associated employer" 
+      });
+    }
+
+    // FIXED: Create application with all required fields
     const application = await Application.create({
       job: jobId,
       applicant: userId,
-      employer: job.employer,
+      employer: job.employer,  // Now this should be valid
+      status: "Pending",        // Set default status
     });
 
     res.status(201).json({
@@ -81,6 +92,15 @@ const applyForJob = async (req, res) => {
     });
   } catch (error) {
     console.error("Apply Error:", error);
+    
+    // Handle validation errors specifically
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ 
+        message: "Validation failed", 
+        errors: error.errors 
+      });
+    }
+    
     res.status(500).json({ message: error.message });
   }
 };
