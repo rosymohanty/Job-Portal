@@ -1,73 +1,26 @@
-const mongoose = require("mongoose");
-
-const statusHistorySchema = new mongoose.Schema(
+const mongoose=require("mongoose");
+const applicationSchema=new mongoose.Schema(
   {
+    job:{
+      type:mongoose.Schema.Types.ObjectId,
+      ref:"Job",
+      required:true,
+    },
+    applicant:{
+      type:mongoose.Schema.Types.ObjectId,
+      ref:"User",
+      required:true,
+    },
+    resume:{
+      type:String,
+    },
     status: {
-      type: String,
-      enum: [
-        "Applied",
-        "Under Review",
-        "Shortlisted",
-        "Interview Scheduled",
-        "Selected",
-        "Rejected",
-      ],
-    },
-    changedAt: {
-      type: Date,
-      default: Date.now,
-    },
-    changedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-    },
+  type: String,
+  enum: ["Pending", "Reviewed", "Shortlisted", "Accepted", "Rejected"],
+  default: "Pending"
+}
   },
-  { _id: false }
+  {timestamps:true}
 );
-
-const applicationSchema = new mongoose.Schema(
-  {
-    job: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Job",
-      required: true,
-    },
-
-    applicant: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-
-    // ✅ IMPORTANT — ADD THIS
-    employer: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-
-    resume: {
-      type: String,
-    },
-
-    status: {
-      type: String,
-      enum: [
-        "Applied",
-        "Under Review",
-        "Shortlisted",
-        "Interview Scheduled",
-        "Selected",
-        "Rejected",
-      ],
-      default: "Applied",
-    },
-
-    statusHistory: [statusHistorySchema],
-
-    employerNote: String,
-  },
-  { timestamps: true }
-);
-
-module.exports = mongoose.model("Application", applicationSchema);
+applicationSchema.index({ job: 1, applicant: 1 }, { unique: true });
+module.exports=mongoose.model("Application",applicationSchema);
