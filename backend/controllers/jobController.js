@@ -45,35 +45,46 @@ const getSingleJob = async (req, res) => {
 // APPLY FOR JOB
 const applyForJob = async (req, res) => {
   try {
-    const jobId = req.body;
+    const jobId = req.params.id; // ✅ FIXED
+
+    if (!jobId) {
+      return res.status(400).json({ message: "Job ID is required" });
+    }
+
     const job = await Job.findById(jobId);
-    if(!job){
-      return res.status(404).json({message:"Job not found"});
+
+    if (!job) {
+      return res.status(404).json({ message: "Job not found" });
     }
-    const alreadyApplied=await Application.findOne({
-      job:jobId,
-      applicant:req.user._id,
+
+    const alreadyApplied = await Application.findOne({
+      job: jobId,
+      applicant: req.user._id,
     });
-    if(alreadyApplied){
-      return res.status(400).json({message:"Already applied"});
+
+    if (alreadyApplied) {
+      return res.status(400).json({ message: "Already applied" });
     }
-    const application=await Application.create({job:jobId,
-      applicant:req.user._id,
-      employer:job.postedBy,
-      statusHistory:[
+
+    const application = await Application.create({
+      job: jobId,
+      applicant: req.user._id,
+      employer: job.postedBy,
+      statusHistory: [
         {
-          status:"Applied",
-          changedBy:req.user._id,
+          status: "Applied",
+          changedBy: req.user._id,
         },
       ],
     });
+
     res.status(201).json({
-      success:true,
-      message:"Application submitted",
+      success: true,
+      message: "Application submitted",
       application,
     });
-  }catch(error){
-    res.status(500).json({message:error.message});
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 //VIEW APPLIED JOBS
@@ -247,10 +258,10 @@ const updateApplicationStatus = async (req, res) => {
     const application=await Application.findById(applicationId);
     if(!application){
       return res.status(404).json({message:"Application not found"});
+    }
       if(application.employer.toString()!==req.user._id.toString()){
         return res.status(403).json({message:"Not authorized"});
       }
-    }
       const currentStatus=application.status;
       if(!allowedTransitions[currentStatus].includes(newStatus)){
         return res.status(400).json({

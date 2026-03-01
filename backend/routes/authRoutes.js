@@ -13,4 +13,5 @@ router.put("/update-user-profile",protect,authorizeRoles("user"),updateUserProfi
 router.put("/change-password",protect,changePassword);
 router.post("/upload-resume",protect,authorizeRoles("user"),upload.single("resume"),uploadResume);
 router.delete("/delete-account",protect,authorizeRoles("user"),deleteUserAccount);
+
 module.exports=router;

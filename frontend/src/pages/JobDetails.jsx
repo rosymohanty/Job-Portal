@@ -9,6 +9,21 @@ const JobDetails = () => {
   const { id } = useParams();
   const [job, setJob] = useState(null);
   const user = JSON.parse(localStorage.getItem("user"));
+  const [loading, setLoading] = useState(false);
+
+const handleApply = async (jobId) => {
+  try {
+    setLoading(true);
+
+    const { data } = await axios.post(`/jobs/${jobId}/apply`);
+
+    toast.success(data.message || "Applied successfully");
+  } catch (error) {
+    console.error(error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     const fetchJob = async () => {
@@ -90,13 +105,14 @@ const JobDetails = () => {
 
         {/* Apply Button (User Only) */}
         {user?.role === "user" && (
-          <button
-  onClick={() => handleApply(job._id)}
-  className="mt-6 bg-indigo-600 px-6 py-3 rounded-2xl font-semibold hover:bg-indigo-700 hover:scale-105 transition duration-300 shadow-lg"
->
-  Apply Now
-</button>
-        )}
+  <button
+    onClick={() => handleApply(job._id)}
+    disabled={loading}
+    className="mt-6 bg-indigo-600 px-6 py-3 rounded-2xl font-semibold hover:bg-indigo-700 hover:scale-105 transition duration-300 shadow-lg disabled:opacity-50"
+  >
+    {loading ? "Applying..." : "Apply Now"}
+  </button>
+)}
       </motion.div>
     </div>
   );
