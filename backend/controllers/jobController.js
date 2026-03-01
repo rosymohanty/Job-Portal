@@ -2,14 +2,6 @@ const Job=require("../models/Job");
 const User=require("../models/User");
 const mongoose=require("mongoose");
 const Application=require("../models/Application");
-const allowedTransitions={
-  Applied:["Under Review","Rejected"],
-  "Under Review":["Shortlisted","Rejected"],
-  Shortlisted:["Interview Scheduled","Rejected"],
-  "Interview Scheduled":["Selected","Rejected"],
-  Selected:[],
-  Rejected:[],
-};
 // GET ALL JOBS 
 const getAllJobs = async (req, res) => {
   try {
