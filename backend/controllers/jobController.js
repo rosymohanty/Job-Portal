@@ -251,8 +251,8 @@ const viewApplicants=async(req,res)=>{
 const changeApplicationStatus = async (req, res) => {
   try {
     const applicationId = req.params.id;
-    const { status } = req.body;
     const employerId = req.user._id;
+    const { status } = req.body;
 
     const validStatuses = [
       "Pending",
@@ -272,6 +272,12 @@ const changeApplicationStatus = async (req, res) => {
 
     if (!application) {
       return res.status(404).json({ message: "Application not found" });
+    }
+
+    if (!application.job) {
+      return res.status(400).json({
+        message: "Associated job not found",
+      });
     }
 
     if (application.job.employer.toString() !== employerId.toString()) {
