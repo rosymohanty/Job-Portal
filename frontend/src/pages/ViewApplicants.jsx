@@ -9,6 +9,7 @@ const ViewApplicants = () => {
   const [applicants, setApplicants] = useState([]);
   const [jobTitle, setJobTitle] = useState("");
   const [loading, setLoading] = useState(true);
+  const [updatingId, setUpdatingId] = useState(null);
 
   useEffect(() => {
     const fetchApplicants = async () => {
@@ -18,6 +19,7 @@ const ViewApplicants = () => {
         setJobTitle(data.jobTitle || "");
       } catch (error) {
         console.error("Error fetching applicants:", error);
+        toast.error("Failed to load applicants");
       } finally {
         setLoading(false);
       }
@@ -26,24 +28,58 @@ const ViewApplicants = () => {
     fetchApplicants();
   }, [id]);
 
-  // 🔥 Handle Status Change
-  const handleStatusChange = async (applicationId, status) => {
-  try {
-    await axios.put(
-      `/jobs/applications/${applicationId}/status`,
-      { newStatus: status }
-    );
+  // 🔥 Fixed Handle Status Change
+  const handleStatusChange = async (applicationId, newStatus) => {
+    try {
+      setUpdatingId(applicationId);
+      
+      // FIXED: Send { status: value } not { newStatus: value }
+      const response = await axios.put(
+        `/jobs/applications/${applicationId}/status`,
+        { 
+          status: newStatus  // ✅ Changed from newStatus to status
+        }
+      );
 
-    toast.success("Status updated");
-  } catch (error) {
-    console.error(error);
-  }
-};
+      // Update local state
+      setApplicants(prev => 
+        prev.map(app => 
+          app._id === applicationId 
+            ? { ...app, status: newStatus }
+            : app
+        )
+      );
+
+      toast.success(`Status updated to ${newStatus}`);
+      
+    } catch (error) {
+      console.error("Status update error:", error);
+      
+      // Better error message
+      const errorMessage = error.response?.data?.message || "Failed to update status";
+      toast.error(errorMessage);
+      
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  // Get status color for dropdown styling
+  const getStatusColor = (status) => {
+    switch(status) {
+      case "Selected": return "bg-green-600";
+      case "Rejected": return "bg-red-600";
+      case "Shortlisted": return "bg-yellow-600";
+      case "Interview Scheduled": return "bg-purple-600";
+      case "Under Review": return "bg-blue-600";
+      default: return "bg-indigo-600";
+    }
+  };
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-white">
-        Loading applicants...
+        <div className="text-indigo-400">Loading applicants...</div>
       </div>
     );
   }
@@ -59,7 +95,7 @@ const ViewApplicants = () => {
         className="text-4xl font-bold mb-10 text-center"
       >
         Applicants for{" "}
-        <span className="text-indigo-400">{jobTitle}</span>
+        <span className="text-indigo-400">{jobTitle || "Job"}</span>
       </motion.h1>
 
       {applicants.length === 0 ? (
@@ -81,11 +117,11 @@ const ViewApplicants = () => {
               }`}
             >
               <h2 className="text-xl font-bold text-indigo-300 mb-2">
-                {application.applicant?.name}
+                {application.applicant?.name || "Unknown"}
               </h2>
 
               <p className="text-gray-300 mb-2">
-                📧 {application.applicant?.email}
+                📧 {application.applicant?.email || "No email"}
               </p>
 
               {application.applicant?.phone && (
@@ -100,6 +136,18 @@ const ViewApplicants = () => {
                 </p>
               )}
 
+              {/* Current Status Badge */}
+              <div className="mb-3">
+                <span className={`inline-block px-3 py-1 rounded-lg text-xs font-semibold ${
+                  application.status === "Selected" ? "bg-green-600" :
+                  application.status === "Rejected" ? "bg-red-600" :
+                  application.status === "Shortlisted" ? "bg-yellow-600" :
+                  "bg-indigo-600"
+                }`}>
+                  Current: {application.status}
+                </span>
+              </div>
+
               {/* ⭐ Status Dropdown */}
               <div className="mt-4">
                 <label className="block text-sm mb-2 text-gray-400">
@@ -107,22 +155,27 @@ const ViewApplicants = () => {
                 </label>
 
                 <select
-  value={application.status}
-  onChange={(e) =>
-    handleStatusChange(
-      application._id,
-      e.target.value
-    )
-  }
-  className="w-full bg-indigo-600 text-white px-3 py-2 rounded-lg focus:outline-none"
->
-  <option value="Applied">Applied</option>
-  <option value="Under Review">Under Review</option>
-  <option value="Shortlisted">Shortlisted ⭐</option>
-  <option value="Interview Scheduled">Interview Scheduled 📅</option>
-  <option value="Selected">Selected ✅</option>
-  <option value="Rejected">Rejected ❌</option>
-</select>
+                  value={application.status}
+                  onChange={(e) =>
+                    handleStatusChange(
+                      application._id,
+                      e.target.value
+                    )
+                  }
+                  disabled={updatingId === application._id}
+                  className={`w-full ${getStatusColor(application.status)} text-white px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-white disabled:opacity-50`}
+                >
+                  {/* FIXED: Match backend valid statuses exactly */}
+                  <option value="Pending">Pending</option>
+                  <option value="Reviewed">Reviewed</option>
+                  <option value="Shortlisted">Shortlisted ⭐</option>
+                  <option value="Accepted">Accepted ✅</option>
+                  <option value="Rejected">Rejected ❌</option>
+                </select>
+                
+                {updatingId === application._id && (
+                  <p className="text-xs text-indigo-400 mt-2">Updating...</p>
+                )}
               </div>
 
               {/* ⭐ Highlight Shortlisted */}
