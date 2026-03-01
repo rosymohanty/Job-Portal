@@ -11,52 +11,39 @@ const {
   deleteJob,
   getMyPostedJobs,
   viewApplicants,
-  changeApplicationStatus,
+  updateApplicationStatus,
   employerDashboardStats,
   saveJob,
-  getSavedJobs
+  getSavedJobs,
+  getApplicationTimeline
 } = require("../controllers/jobController");
 
 const { protect, authorizeRoles } = require("../middleware/authMiddleware");
+
+
+// ================= PUBLIC ROUTES =================
+
 router.get("/", getAllJobs);
-router.get("/applied/me", protect, authorizeRoles("user"), viewAppliedJobs);
-router.post("/:id/apply", protect, authorizeRoles("user"), applyForJob);
+
+
+// ================= USER ROUTES =================
+
+// View applied jobs
 router.get(
-  "/employer/dashboard-stats",
+  "/applied/me",
   protect,
-  authorizeRoles("employer"),
-  employerDashboardStats
-);
-router.get(
-  "/employer/my-jobs",
-  protect,
-  authorizeRoles("employer"),
-  getMyPostedJobs
-);
-router.get(
-  "/:id/applicants",
-  protect,
-  authorizeRoles("employer"),
-  viewApplicants
+  authorizeRoles("user"),
+  viewAppliedJobs
 );
 
-// Post new job
-router.post("/", protect, authorizeRoles("employer"), postJob);
-
-// Update job
-router.put("/:id", protect, authorizeRoles("employer"), updateJob);
-
-// Delete job
-router.delete("/:id", protect, authorizeRoles("employer"), deleteJob);
-
-// Change application status
-router.put(
-  "/applications/:id/status",
+// Apply for job
+router.post(
+  "/:id/apply",
   protect,
-  authorizeRoles("employer"),
-  changeApplicationStatus
+  authorizeRoles("user"),
+  applyForJob
 );
-router.get("/:id", getSingleJob);
+
 // Save / Unsave job
 router.post(
   "/:id/save",
@@ -72,4 +59,78 @@ router.get(
   authorizeRoles("user"),
   getSavedJobs
 );
+
+// Get Application Timeline (VERY IMPORTANT: keep above /:id)
+router.get(
+  "/applications/:applicationId/timeline",
+  protect,
+  getApplicationTimeline
+);
+
+
+// ================= EMPLOYER ROUTES =================
+
+// Dashboard Stats
+router.get(
+  "/employer/dashboard-stats",
+  protect,
+  authorizeRoles("employer"),
+  employerDashboardStats
+);
+
+// My posted jobs
+router.get(
+  "/employer/my-jobs",
+  protect,
+  authorizeRoles("employer"),
+  getMyPostedJobs
+);
+
+// View applicants
+router.get(
+  "/:id/applicants",
+  protect,
+  authorizeRoles("employer"),
+  viewApplicants
+);
+
+// Post new job
+router.post(
+  "/",
+  protect,
+  authorizeRoles("employer"),
+  postJob
+);
+
+// Update job
+router.put(
+  "/:id",
+  protect,
+  authorizeRoles("employer"),
+  updateJob
+);
+
+// Delete job
+router.delete(
+  "/:id",
+  protect,
+  authorizeRoles("employer"),
+  deleteJob
+);
+
+// Change application status
+router.put(
+  "/applications/:id/status",
+  protect,
+  authorizeRoles("employer"),
+  updateApplicationStatus
+);
+
+
+// ================= MUST BE LAST =================
+
+// Get single job (KEEP LAST to avoid route conflict)
+router.get("/:id", getSingleJob);
+
+
 module.exports = router;

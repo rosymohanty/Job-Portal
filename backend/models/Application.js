@@ -1,4 +1,28 @@
 const mongoose=require("mongoose");
+const statusHistorySchema=new mongoose.Schema(
+  {
+    status:{
+      type:String,
+      enum:[
+        "Applied",
+        "Under Review",
+        "Shortlisted",
+        "Interview Scheduled",
+        "Selected",
+        "Rejected",
+      ],
+    },
+    changedAt:{
+      type:Date,
+      default:Date.now,
+    },
+    changedBy:{
+      type:mongoose.Schema.Types.ObjectId,
+      ref:"User",
+    },
+  },
+  {_id:false}
+);
 const applicationSchema=new mongoose.Schema(
   {
     job:{
@@ -16,11 +40,12 @@ const applicationSchema=new mongoose.Schema(
     },
     status: {
   type: String,
-  enum: ["Pending", "Reviewed", "Shortlisted", "Accepted", "Rejected"],
-  default: "Pending"
-}
+  enum: ["Applied","Under Review","Shortlisted", "Interview Scheduled","Selected", "Rejected"],
+  default: "Applied"
+  },
+  statusHistory:[statusHistorySchema],
+  employerNote:String,
   },
   {timestamps:true}
 );
-applicationSchema.index({ job: 1, applicant: 1 }, { unique: true });
 module.exports=mongoose.model("Application",applicationSchema);

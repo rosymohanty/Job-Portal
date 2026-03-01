@@ -45,41 +45,35 @@ const getSingleJob = async (req, res) => {
 // APPLY FOR JOB
 const applyForJob = async (req, res) => {
   try {
-    const userId = req.user._id;
-    const jobId = req.params.id;
-
-    if (!mongoose.Types.ObjectId.isValid(jobId)) {
-      return res.status(400).json({ message: "Invalid Job ID" });
-    }
-
+    const jobId = req.body;
     const job = await Job.findById(jobId);
-
-    if (!job || !job.isActive) {
-      return res.status(404).json({ message: "Job not found or inactive" });
+    if(!job){
+      return res.status(404).json({message:"Job not found"});
     }
-
-    const alreadyApplied = await Application.findOne({
-      job: jobId,
-      applicant: userId,
+    const alreadyApplied=await Application.findOne({
+      job:jobId,
+      applicant:req.user._id,
     });
-
-    if (alreadyApplied) {
-      return res.status(400).json({
-        message: "You have already applied for this job",
-      });
+    if(alreadyApplied){
+      return res.status(400).json({message:"Already applied"});
     }
-
-    const application = await Application.create({
-      job: jobId,
-      applicant: userId,
+    const application=await Application.create({job:jobId,
+      applicant:req.user._id,
+      employer:job.postedBy,
+      statusHistory:[
+        {
+          status:"Applied",
+          changedBy:req.user._id,
+        },
+      ],
     });
-
     res.status(201).json({
-      message: "Job applied successfully",
+      success:true,
+      message:"Application submitted",
       application,
     });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  }catch(error){
+    res.status(500).json({message:error.message});
   }
 };
 //VIEW APPLIED JOBS
@@ -246,49 +240,36 @@ const viewApplicants=async(req,res)=>{
   }
 };
 // CHANGE APPLICATION STATUS
-const changeApplicationStatus = async (req, res) => {
+const updateApplicationStatus = async (req, res) => {
   try {
-    const employerId = req.user._id;
-    const applicationId = req.params.id;
-    const { status } = req.body;
-
-    const validStatuses = ["Pending", "Reviewed", "Accepted", "Rejected"];
-
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({
-        message: "Invalid status value",
+    const {applicationId}=req.params;
+    const {newStatus}=req.body;
+    const application=await Application.findById(applicationId);
+    if(!application){
+      return res.status(404).json({message:"Application not found"});
+      if(application.employer.toString()!==req.user._id.toString()){
+        return res.status(403).json({message:"Not authorized"});
+      }
+    }
+      const currentStatus=application.status;
+      if(!allowedTransitions[currentStatus].includes(newStatus)){
+        return res.status(400).json({
+          message:`Cannot change from ${currentStatus} to ${newStatus}`,
+        });
+      }
+      application.status=newStatus;
+      application.statusHistory.push({
+        status:newStatus,
+        changedBy:req.user._id,
       });
-    }
-
-    const application = await Application.findById(applicationId).populate("job");
-
-    if (!application) {
-      return res.status(404).json({ message: "Application not found" });
-    }
-
-    if (!application.job) {
-      return res.status(400).json({
-        message: "Associated job not found"
+      await application.save();
+      res.json({
+        success:true,
+        message:"Status updated",
+        application,
       });
-    }
-
-    if (application.job.employer.toString() !== employerId.toString()) {
-      return res.status(403).json({
-        message: "You are not authorized to update this application",
-      });
-    }
-
-    application.status = status;
-    await application.save();
-
-    res.status(200).json({
-      message: "Application status updated successfully",
-      application,
-    });
-
-  } catch (error) {
-    console.error("Status Change Error:", error);
-    res.status(500).json({ message: error.message });
+    }catch(error){
+      res.status(500).json({message:error.message});
   }
 };
 // EMPLOYER DASHBOARD STATS
@@ -296,12 +277,12 @@ const employerDashboardStats = async (req, res) => {
   try {
     const employerId = req.user._id;
 
-    // 1️⃣ Total Jobs Posted
+    // 1️⃣ Total Jobs
     const totalJobs = await Job.countDocuments({
       employer: employerId,
     });
 
-    // 2️⃣ Total Active Jobs
+    // 2️⃣ Active Jobs
     const activeJobs = await Job.countDocuments({
       employer: employerId,
       isActive: true,
@@ -317,10 +298,10 @@ const employerDashboardStats = async (req, res) => {
       job: { $in: jobIds },
     });
 
-    // 4️⃣ Accepted Candidates
-    const acceptedApplications = await Application.countDocuments({
+    // 4️⃣ Selected Candidates
+    const selectedApplications = await Application.countDocuments({
       job: { $in: jobIds },
-      status: "Accepted",
+      status: "Selected",
     });
 
     // 5️⃣ Rejected Candidates
@@ -329,14 +310,41 @@ const employerDashboardStats = async (req, res) => {
       status: "Rejected",
     });
 
+    // 6️⃣ Under Review
+    const underReview = await Application.countDocuments({
+      job: { $in: jobIds },
+      status: "Under Review",
+    });
+
+    // 7️⃣ Shortlisted
+    const shortlisted = await Application.countDocuments({
+      job: { $in: jobIds },
+      status: "Shortlisted",
+    });
+
+    // 8️⃣ Interview Scheduled
+    const interviewScheduled = await Application.countDocuments({
+      job: { $in: jobIds },
+      status: "Interview Scheduled",
+    });
+
+    // 9️⃣ Conversion Rate
+    const conversionRate =
+      totalApplications === 0
+        ? 0
+        : ((selectedApplications / totalApplications) * 100).toFixed(2);
+
     res.status(200).json({
       totalJobs,
       activeJobs,
       totalApplications,
-      acceptedApplications,
+      selectedApplications,
       rejectedApplications,
+      underReview,
+      shortlisted,
+      interviewScheduled,
+      conversionRate: `${conversionRate}%`,
     });
-
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -396,6 +404,26 @@ const getSavedJobs = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+const getApplicationTimeline=async(req,res)=>{
+  try{
+    const {applicationId}=req.params;
+    const application=await Application.findById(applicationId)
+      .populate("statusHistory.changedBy","name role")
+      .select("status statusHistory applicant employer");
+    if(!application)
+      return res.status(404).json({message:"Application not found"});
+    if(application.applicant.toString()!==req.user._id.toString() && application.employer.toString()!==req.user._id.toString()){
+      return res.status(403).json({message:"Not authorized"});
+    }
+    res.json({
+      success:true,
+      currentStatus:application.status,
+      timeline:application.statusHistory,
+    });
+  }catch(error){
+    res.status(500).json({message:error.message});
+  }
+};
 module.exports = {
   getAllJobs,
   getSingleJob,
@@ -406,8 +434,9 @@ module.exports = {
   deleteJob,
   getMyPostedJobs,
   viewApplicants,
-  changeApplicationStatus,
+  updateApplicationStatus,
   employerDashboardStats,
   saveJob,
-  getSavedJobs
+  getSavedJobs,
+  getApplicationTimeline
 };
