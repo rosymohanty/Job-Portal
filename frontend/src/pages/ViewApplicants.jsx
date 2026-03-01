@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import axios from "../utils/axios";
 import { motion } from "framer-motion";
+import toast from "react-hot-toast";
 
 const ViewApplicants = () => {
   const { id } = useParams();
@@ -26,25 +27,18 @@ const ViewApplicants = () => {
   }, [id]);
 
   // 🔥 Handle Status Change
-  const handleStatusChange = async (applicationId, newStatus) => {
-    try {
-      await axios.put(
-        `/jobs/applications/${applicationId}/status`,
-        { status: newStatus }
-      );
+  const handleStatusChange = async (applicationId, status) => {
+  try {
+    await axios.put(
+      `/jobs/applications/${applicationId}/status`,
+      { newStatus: status }
+    );
 
-      // Update UI instantly
-      setApplicants((prev) =>
-        prev.map((app) =>
-          app._id === applicationId
-            ? { ...app, status: newStatus }
-            : app
-        )
-      );
-    } catch (error) {
-      console.error("Status update failed:", error);
-    }
-  };
+    toast.success("Status updated");
+  } catch (error) {
+    console.error(error);
+  }
+};
 
   if (loading) {
     return (
@@ -113,23 +107,22 @@ const ViewApplicants = () => {
                 </label>
 
                 <select
-                  value={application.status}
-                  onChange={(e) =>
-                    handleStatusChange(
-                      application._id,
-                      e.target.value
-                    )
-                  }
-                  className="w-full bg-indigo-600 text-white px-3 py-2 rounded-lg focus:outline-none"
-                >
-                  <option value="Pending">Pending</option>
-                  <option value="Reviewed">Reviewed</option>
-                  <option value="Shortlisted">
-                    Shortlisted ⭐
-                  </option>
-                  <option value="Accepted">Accepted ✅</option>
-                  <option value="Rejected">Rejected ❌</option>
-                </select>
+  value={application.status}
+  onChange={(e) =>
+    handleStatusChange(
+      application._id,
+      e.target.value
+    )
+  }
+  className="w-full bg-indigo-600 text-white px-3 py-2 rounded-lg focus:outline-none"
+>
+  <option value="Applied">Applied</option>
+  <option value="Under Review">Under Review</option>
+  <option value="Shortlisted">Shortlisted ⭐</option>
+  <option value="Interview Scheduled">Interview Scheduled 📅</option>
+  <option value="Selected">Selected ✅</option>
+  <option value="Rejected">Rejected ❌</option>
+</select>
               </div>
 
               {/* ⭐ Highlight Shortlisted */}
