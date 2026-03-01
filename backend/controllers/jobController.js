@@ -462,7 +462,6 @@ module.exports = {
   deleteJob,
   getMyPostedJobs,
   viewApplicants,
-  allowedTransitions,
   updateApplicationStatus,
   employerDashboardStats,
   saveJob,
