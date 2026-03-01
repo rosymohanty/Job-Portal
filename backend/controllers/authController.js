@@ -1,9 +1,10 @@
+// authController.js
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const Application = require("../models/Application");
 
-// @desc    Register a new user
+// @desc    Register a new user (job seeker)
 // @route   POST /api/auth/register
 // @access  Public
 const register = async (req, res) => {
@@ -83,7 +84,7 @@ const register = async (req, res) => {
   }
 };
 
-// @desc    Login user
+// @desc    Login user (job seeker)
 // @route   POST /api/auth/login
 // @access  Public
 const login = async (req, res) => {
@@ -171,7 +172,7 @@ const registerEmployer = async (req, res) => {
     if (!name || !email || !password || !companyName) {
       return res.status(400).json({ 
         success: false,
-        message: "Please provide all required fields" 
+        message: "Please provide all required fields (name, email, password, companyName)" 
       });
     }
 
@@ -218,6 +219,7 @@ const registerEmployer = async (req, res) => {
       isApproved: false, // Employers need admin approval
     });
 
+    // Don't send token for employer registration - they need admin approval first
     res.status(201).json({
       success: true,
       message: "Employer registered successfully. Waiting for admin approval",
@@ -386,6 +388,66 @@ const updateProfile = async (req, res) => {
   }
 };
 
+// @desc    Update user profile (job seeker specific)
+// @route   PUT /api/auth/user-profile
+// @access  Private (User only)
+const updateUserProfile = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Check if user is a job seeker
+    if (req.user.role !== "user") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Only job seekers can update this profile.",
+      });
+    }
+
+    const { name, phone, bio, skills } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        message: "User not found" 
+      });
+    }
+
+    // Update fields
+    if (name) user.name = name.trim();
+    if (phone) user.phone = phone.trim();
+    if (bio) user.bio = bio.trim();
+    if (skills) {
+      // Handle skills as array or comma-separated string
+      user.skills = Array.isArray(skills) 
+        ? skills 
+        : skills.split(',').map(skill => skill.trim());
+    }
+
+    const updatedUser = await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "User profile updated successfully",
+      user: {
+        _id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        phone: updatedUser.phone,
+        bio: updatedUser.bio,
+        skills: updatedUser.skills,
+        resume: updatedUser.resume,
+      },
+    });
+  } catch (error) {
+    console.error("Update user profile error:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Failed to update profile" 
+    });
+  }
+};
+
 // @desc    Change password
 // @route   PUT /api/auth/change-password
 // @access  Private
@@ -500,67 +562,7 @@ const uploadResume = async (req, res) => {
   }
 };
 
-// @desc    Update user profile (job seeker specific)
-// @route   PUT /api/auth/user-profile
-// @access  Private (User only)
-const updateUserProfile = async (req, res) => {
-  try {
-    const userId = req.user._id;
-
-    // Check if user is a job seeker
-    if (req.user.role !== "user") {
-      return res.status(403).json({
-        success: false,
-        message: "Access denied. Only job seekers can update this profile.",
-      });
-    }
-
-    const { name, phone, bio, skills } = req.body;
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ 
-        success: false,
-        message: "User not found" 
-      });
-    }
-
-    // Update fields
-    if (name) user.name = name.trim();
-    if (phone) user.phone = phone.trim();
-    if (bio) user.bio = bio.trim();
-    if (skills) {
-      // Handle skills as array or comma-separated string
-      user.skills = Array.isArray(skills) 
-        ? skills 
-        : skills.split(',').map(skill => skill.trim());
-    }
-
-    const updatedUser = await user.save();
-
-    res.status(200).json({
-      success: true,
-      message: "User profile updated successfully",
-      user: {
-        _id: updatedUser._id,
-        name: updatedUser.name,
-        email: updatedUser.email,
-        phone: updatedUser.phone,
-        bio: updatedUser.bio,
-        skills: updatedUser.skills,
-        resume: updatedUser.resume,
-      },
-    });
-  } catch (error) {
-    console.error("Update user profile error:", error);
-    res.status(500).json({ 
-      success: false,
-      message: "Failed to update profile" 
-    });
-  }
-};
-
-// @desc    Delete user account
+// @desc    Delete user account (job seeker)
 // @route   DELETE /api/auth/account
 // @access  Private (User only)
 const deleteUserAccount = async (req, res) => {
@@ -659,6 +661,7 @@ const logout = (req, res) => {
   });
 };
 
+// ✅ EXPORT ALL FUNCTIONS
 module.exports = {
   register,
   login,
