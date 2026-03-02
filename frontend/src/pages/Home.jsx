@@ -46,9 +46,19 @@ const Home = () => {
       params.append("limit", filters.limit);
 
       const { data } = await axios.get(`/jobs?${params.toString()}`);
+      console.log("Jobs response:", data);
 
       // Handle different backend response formats
-      if (data.success) {
+      if (data.success && data.data) {
+        // New format: { success: true, data: { jobs: [], pagination: {} } }
+        setJobs(data.data.jobs || []);
+        setPagination({
+          totalJobs: data.data.pagination?.total || 0,
+          totalPages: data.data.pagination?.totalPages || 1,
+          currentPage: data.data.pagination?.currentPage || 1
+        });
+      } else if (data.success && data.jobs) {
+        // Old format: { success: true, jobs: [], totalJobs: 0 }
         setJobs(data.jobs || []);
         setPagination({
           totalJobs: data.totalJobs || 0,
@@ -56,13 +66,12 @@ const Home = () => {
           currentPage: data.currentPage || 1
         });
       } else if (Array.isArray(data)) {
+        // Very old format: just array
         setJobs(data);
-      } else if (Array.isArray(data.jobs)) {
-        setJobs(data.jobs);
         setPagination({
-          totalJobs: data.totalJobs || data.jobs.length,
-          totalPages: data.totalPages || 1,
-          currentPage: data.currentPage || 1
+          totalJobs: data.length,
+          totalPages: 1,
+          currentPage: 1
         });
       } else {
         setJobs([]);
@@ -75,17 +84,39 @@ const Home = () => {
     }
   };
 
+  // ✅ FIXED: Updated fetchStats function
   const fetchStats = async () => {
     try {
-      const { data } = await axios.get("/jobs/stats/overview");
-      if (data.success) {
+      // Try to fetch total jobs count from jobs endpoint
+      const params = new URLSearchParams();
+      params.append("limit", "1");
+      const { data } = await axios.get(`/jobs?${params.toString()}`);
+      
+      if (data.success && data.data) {
+        // New format
         setStats({
-          total: data.stats.total || 0,
-          active: data.stats.active || 0
+          total: data.data.pagination?.total || 0,
+          active: data.data.pagination?.total || 0
+        });
+      } else if (data.success && data.totalJobs) {
+        // Old format
+        setStats({
+          total: data.totalJobs || 0,
+          active: data.totalJobs || 0
+        });
+      } else if (Array.isArray(data)) {
+        setStats({
+          total: data.length,
+          active: data.length
         });
       }
     } catch (error) {
       console.error("Error fetching stats:", error);
+      // Set default stats
+      setStats({
+        total: 0,
+        active: 0
+      });
     }
   };
 
@@ -135,7 +166,7 @@ const Home = () => {
           Explore <span className="text-indigo-400">Available Jobs</span>
         </h1>
         <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-          Find your next career opportunity from {stats.active} active job listings
+          Find your next career opportunity from {stats.total} job listings
         </p>
       </motion.div>
 
@@ -290,7 +321,7 @@ const Home = () => {
 
                   {/* View Details Button */}
                   <Link
-                    to={`/jobs/${job._id}`}
+                    to={`/job/${job._id}`}
                     className="inline-block w-full bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 rounded-xl text-center font-semibold hover:shadow-lg hover:shadow-indigo-500/25 transition-all duration-300"
                   >
                     View Details →

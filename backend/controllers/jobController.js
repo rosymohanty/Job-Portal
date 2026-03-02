@@ -191,17 +191,37 @@ const getSingleJob = async (req, res) => {
 // @desc    Post a new job (Employer only)
 // @route   POST /api/jobs
 // @access  Private (Employer only)
-const postJob = async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+// In your jobController.js - update the postJob function
 
+// @desc    Post a new job (Employer only)
+// @route   POST /api/jobs/employer/jobs
+// @access  Private (Employer only)
+// @desc    Post a new job (Employer only)
+// @route   POST /api/jobs/employer/jobs
+// @access  Private (Employer only)
+// @desc    Post a new job (Employer only)
+// @route   POST /api/jobs/employer/jobs
+// @access  Private (Employer only)
+// @desc    Post a new job (Employer only)
+// @route   POST /api/jobs/employer/jobs
+// @access  Private (Employer only)
+// @desc    Post a new job (Employer only)
+// @route   POST /api/jobs/employer/jobs
+// @access  Private (Employer only)
+const postJob = async (req, res) => {
   try {
     const employerId = req.user._id;
 
-    // Check if employer is approved
-    if (!req.user.isApproved) {
-      await session.abortTransaction();
-      session.endSession();
+    // Check if employer exists and is approved
+    const employer = await User.findById(employerId);
+    if (!employer) {
+      return res.status(404).json({
+        success: false,
+        message: "Employer not found"
+      });
+    }
+
+    if (!employer.isApproved) {
       return res.status(403).json({
         success: false,
         message: "Your employer account is pending admin approval. You cannot post jobs yet.",
@@ -218,92 +238,76 @@ const postJob = async (req, res) => {
       responsibilities, 
       benefits, 
       experienceLevel, 
-      applicationDeadline,
-      minSalary,
-      maxSalary,
-      currency
+      applicationDeadline 
     } = req.body;
 
     // Validation
     if (!title || !description || !location) {
-      await session.abortTransaction();
-      session.endSession();
       return res.status(400).json({
         success: false,
         message: "Title, description, and location are required",
       });
     }
 
-    // Check for duplicate active job
-    const existingJob = await Job.findOne({
-      employer: employerId,
-      title: { $regex: new RegExp(`^${title.trim()}$`, 'i') },
-      isActive: true,
-      createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
-    }).session(session);
+    // Prepare job data
+    // In your jobController.js, update the jobData creation:
+const jobData = {
+  title: title.trim(),
+  description: description.trim(),
+  location: location.trim(),
+  salary: salary?.trim() || "",
+  jobType: jobType || "Full-time",
+  experienceLevel: experienceLevel || "Entry",
+  employer: employerId,
+  isActive: true,
+  applicants: [],
+  applicationCount: 0,  // Set explicitly
+  views: 0,
+  requirements: Array.isArray(requirements) ? requirements.filter(r => r && r.trim() !== "").map(r => r.trim()) : [],
+  responsibilities: Array.isArray(responsibilities) ? responsibilities.filter(r => r && r.trim() !== "").map(r => r.trim()) : [],
+  benefits: Array.isArray(benefits) ? benefits.filter(b => b && b.trim() !== "").map(b => b.trim()) : [],
+};
 
-    if (existingJob) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(400).json({
-        success: false,
-        message: "You have already posted a similar active job in the last 30 days",
-      });
-    }
-
-    // Validate deadline if provided
     if (applicationDeadline) {
-      const deadline = new Date(applicationDeadline);
-      if (deadline < new Date()) {
-        await session.abortTransaction();
-        session.endSession();
-        return res.status(400).json({
-          success: false,
-          message: "Application deadline must be in the future",
-        });
-      }
+      jobData.applicationDeadline = new Date(applicationDeadline);
     }
-
-    // Sanitize HTML content
-    const sanitizedDescription = sanitizeContent(description);
 
     // Create job
-    const job = await Job.create([{
-      title: title.trim(),
-      description: sanitizedDescription,
-      location: location.trim(),
-      salary: salary?.trim(),
-      minSalary: minSalary ? parseInt(minSalary) : undefined,
-      maxSalary: maxSalary ? parseInt(maxSalary) : undefined,
-      currency: currency || 'USD',
-      jobType: jobType || "Full-time",
-      employer: employerId,
-      requirements: requirements || [],
-      responsibilities: responsibilities || [],
-      benefits: benefits || [],
-      experienceLevel,
-      applicationDeadline: applicationDeadline ? new Date(applicationDeadline) : undefined,
-    }], { session });
+    const job = await Job.create(jobData);
 
-    await session.commitTransaction();
-    session.endSession();
+    // Populate employer info for response
+    const populatedJob = await Job.findById(job._id).populate(
+      "employer",
+      "name email companyName"
+    );
 
     res.status(201).json({
       success: true,
       message: "Job posted successfully",
-      data: { job: job[0] },
+      data: { job: populatedJob },
     });
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
     console.error("Post job error:", error);
+    
+    if (error.name === 'ValidationError') {
+      const errors = {};
+      Object.keys(error.errors).forEach(key => {
+        errors[key] = error.errors[key].message;
+      });
+      
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: errors
+      });
+    }
+    
     res.status(500).json({ 
       success: false,
-      message: "Failed to post job" 
+      message: "Failed to post job. Please try again."
     });
   }
 };
-
 // @desc    Update a job (Employer only)
 // @route   PUT /api/jobs/:id
 // @access  Private (Employer only)
@@ -1344,52 +1348,55 @@ const getSimilarJobs = async (req, res) => {
 // @desc    Get job statistics for admin
 // @route   GET /api/jobs/stats
 // @access  Private (Admin only)
+// @desc    Get job statistics for homepage (public)
+// @route   GET /api/jobs/stats/overview
+// @access  Public
 const getJobStats = async (req, res) => {
   try {
-    const stats = await Job.aggregate([
-      {
-        $group: {
-          _id: null,
-          totalJobs: { $sum: 1 },
-          activeJobs: { $sum: { $cond: ["$isActive", 1, 0] } },
-          avgViews: { $avg: "$views" },
-          totalViews: { $sum: "$views" },
-          jobsByType: { $push: "$jobType" }
-        }
-      }
-    ]);
-
+    const totalJobs = await Job.countDocuments({ isActive: true });
+    
     const jobsByType = await Job.aggregate([
+      { $match: { isActive: true } },
       { $group: { _id: "$jobType", count: { $sum: 1 } } }
     ]);
 
-    const recentJobs = await Job.find()
+    const recentJobs = await Job.find({ isActive: true })
       .sort({ createdAt: -1 })
       .limit(5)
       .populate("employer", "companyName")
-      .select("title jobType location createdAt views")
+      .select("title location jobType salary createdAt")
       .lean();
+
+    // Format jobs by type
+    const jobsByTypeMap = {
+      "Full-time": 0,
+      "Part-time": 0,
+      "Internship": 0,
+      "Contract": 0,
+      "Remote": 0
+    };
+    
+    jobsByType.forEach(item => {
+      jobsByTypeMap[item._id] = item.count;
+    });
 
     res.status(200).json({
       success: true,
       data: {
-        overview: stats[0] || { totalJobs: 0, activeJobs: 0, avgViews: 0, totalViews: 0 },
-        jobsByType: jobsByType.reduce((acc, curr) => {
-          acc[curr._id] = curr.count;
-          return acc;
-        }, {}),
+        total: totalJobs,
+        active: totalJobs,
+        jobsByType: jobsByTypeMap,
         recentJobs
       }
     });
   } catch (error) {
-    console.error("Get job stats error:", error);
+    console.error("Get job stats overview error:", error);
     res.status(500).json({ 
-      success: false,
+      success: false, 
       message: "Failed to fetch job statistics" 
     });
   }
 };
-
 module.exports = {
   getAllJobs,
   getSingleJob,

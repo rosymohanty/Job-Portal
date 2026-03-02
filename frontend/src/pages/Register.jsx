@@ -14,6 +14,11 @@ const Register = () => {
     email: "",
     password: "",
     role: "user",
+    // Employer fields
+    companyName: "",
+    companyWebsite: "",
+    companyLocation: "",
+    phone: "",
   });
 
   const [errors, setErrors] = useState({});
@@ -29,7 +34,7 @@ const Register = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    // Name validation
+    // Name validation (for both user and employer)
     if (!form.name.trim()) {
       newErrors.name = "Name is required";
     } else if (form.name.trim().length < 2) {
@@ -51,6 +56,13 @@ const Register = () => {
       newErrors.password = "Password must be at least 6 characters";
     }
 
+    // Employer-specific validations
+    if (form.role === "employer") {
+      if (!form.companyName?.trim()) {
+        newErrors.companyName = "Company name is required";
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -69,7 +81,27 @@ const Register = () => {
         ? "/auth/register-employer" 
         : "/auth/register";
 
-      const { data } = await axios.post(endpoint, form);
+      // Prepare data based on role
+      const submitData = form.role === "employer" 
+        ? {
+            name: form.name,
+            email: form.email,
+            password: form.password,
+            companyName: form.companyName,
+            companyWebsite: form.companyWebsite || undefined,
+            companyLocation: form.companyLocation || undefined,
+            phone: form.phone || undefined,
+          }
+        : {
+            name: form.name,
+            email: form.email,
+            password: form.password,
+            role: "user",
+          };
+
+      console.log("Submitting data:", submitData);
+
+      const { data } = await axios.post(endpoint, submitData);
 
       if (data.success) {
         if (form.role === "employer") {
@@ -92,6 +124,9 @@ const Register = () => {
       if (errorMessage?.includes("already exists")) {
         setErrors({ email: "Email already registered" });
         toast.error("Email already registered");
+      } else if (errorMessage?.includes("company name")) {
+        setErrors({ companyName: "Company name is required" });
+        toast.error("Company name is required");
       } else if (errorMessage?.includes("password")) {
         toast.error("Password must be at least 6 characters");
       } else {
@@ -109,14 +144,22 @@ const Register = () => {
         name: "John Doe",
         email: "john@example.com",
         password: "password123",
-        role: "user"
+        role: "user",
+        companyName: "",
+        companyWebsite: "",
+        companyLocation: "",
+        phone: "",
       });
     } else if (role === "employer") {
       setForm({
         name: "Jane Smith",
         email: "jane@company.com",
         password: "password123",
-        role: "employer"
+        role: "employer",
+        companyName: "Tech Corp",
+        companyWebsite: "https://techcorp.com",
+        companyLocation: "San Francisco, CA",
+        phone: "+1 234 567 8900",
       });
     }
   };
@@ -249,6 +292,81 @@ const Register = () => {
             </label>
           </div>
         </div>
+
+        {/* Employer Additional Fields */}
+        {form.role === "employer" && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            transition={{ duration: 0.3 }}
+            className="space-y-4 mb-6"
+          >
+            {/* Company Name (Required) */}
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">
+                Company Name <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                name="companyName"
+                placeholder="Enter your company name"
+                value={form.companyName}
+                onChange={handleChange}
+                className={`w-full p-3 rounded-xl bg-white/20 placeholder-gray-400 outline-none focus:ring-2 focus:ring-indigo-500 ${
+                  errors.companyName ? 'border-2 border-red-500' : ''
+                }`}
+              />
+              {errors.companyName && (
+                <p className="text-red-400 text-sm mt-1">{errors.companyName}</p>
+              )}
+            </div>
+
+            {/* Company Website (Optional) */}
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">
+                Company Website <span className="text-gray-500">(Optional)</span>
+              </label>
+              <input
+                type="url"
+                name="companyWebsite"
+                placeholder="https://example.com"
+                value={form.companyWebsite}
+                onChange={handleChange}
+                className="w-full p-3 rounded-xl bg-white/20 placeholder-gray-400 outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            {/* Company Location (Optional) */}
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">
+                Company Location <span className="text-gray-500">(Optional)</span>
+              </label>
+              <input
+                type="text"
+                name="companyLocation"
+                placeholder="City, Country"
+                value={form.companyLocation}
+                onChange={handleChange}
+                className="w-full p-3 rounded-xl bg-white/20 placeholder-gray-400 outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            {/* Phone (Optional) */}
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">
+                Phone Number <span className="text-gray-500">(Optional)</span>
+              </label>
+              <input
+                type="tel"
+                name="phone"
+                placeholder="+1 234 567 8900"
+                value={form.phone}
+                onChange={handleChange}
+                className="w-full p-3 rounded-xl bg-white/20 placeholder-gray-400 outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </motion.div>
+        )}
 
         {/* Info Message for Employers */}
         {form.role === "employer" && (

@@ -17,7 +17,7 @@ import PostJob from "./pages/PostJob";
 import ViewApplicants from "./pages/ViewApplicants";
 import DashboardOverview from "./pages/DashboardOverview";
 import SavedJobs from "./pages/SavedJobs";
-
+import ResumeUpload from "./pages/ResumeUpload";
 
 function App() {
   return (
@@ -89,7 +89,15 @@ function App() {
   element={<DashboardOverview />}
 />
           <Route path="/saved-jobs" element={<SavedJobs />} />
-      </Routes>
+      <Route
+  path="/upload-resume"
+  element={
+    <ProtectedRoute allowedRole="user">
+      <ResumeUpload />
+    </ProtectedRoute>
+  }
+/>
+</Routes>
     </>
   );
 }

@@ -1,52 +1,70 @@
-import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import axios from "../utils/axios";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import axios from "../utils/axios";
 import toast from "react-hot-toast";
 
 const ViewApplicants = () => {
-  const { id } = useParams();
+  const { id } = useParams(); // Get job ID from URL
   const navigate = useNavigate();
   const [applicants, setApplicants] = useState([]);
-  const [jobTitle, setJobTitle] = useState("");
   const [loading, setLoading] = useState(true);
-  const [updatingId, setUpdatingId] = useState(null);
-  const [stats, setStats] = useState({
+  const [jobDetails, setJobDetails] = useState(null);
+  const [filters, setFilters] = useState({
+    status: "all",
+    page: 1,
+    limit: 10
+  });
+  const [pagination, setPagination] = useState({
     total: 0,
-    pending: 0,
-    reviewed: 0,
-    shortlisted: 0,
-    accepted: 0,
-    rejected: 0
+    totalPages: 1,
+    currentPage: 1
   });
 
   useEffect(() => {
     fetchApplicants();
-  }, [id]);
+  }, [id, filters.status, filters.page]);
 
   const fetchApplicants = async () => {
     try {
       setLoading(true);
-      const { data } = await axios.get(`/jobs/employer/jobs/${id}/applicants`);
+      console.log("Fetching applicants for job ID:", id);
       
-      // Handle response structure from your backend
+      const { data } = await axios.get(`/jobs/employer/jobs/${id}/applicants`, {
+        params: {
+          status: filters.status !== "all" ? filters.status : undefined,
+          page: filters.page,
+          limit: filters.limit
+        }
+      });
+      
+      console.log("Applicants response:", data);
+      
       if (data.success) {
-        setApplicants(data.applicants || []);
-        setJobTitle(data.jobTitle || "");
-        
-        // Calculate stats
-        const apps = data.applicants || [];
-        setStats({
-          total: data.totalApplicants || apps.length,
-          pending: apps.filter(app => app.status === "Pending").length,
-          reviewed: apps.filter(app => app.status === "Reviewed").length,
-          shortlisted: apps.filter(app => app.status === "Shortlisted").length,
-          accepted: apps.filter(app => app.status === "Accepted").length,
-          rejected: apps.filter(app => app.status === "Rejected").length
-        });
-      } else {
-        setApplicants(data.applicants || []);
-        setJobTitle(data.jobTitle || "");
+        // Handle different response structures
+        if (data.data) {
+          setApplicants(data.data.applicants || []);
+          setJobDetails({
+            title: data.data.jobTitle || "Job",
+            stats: data.data.stats || {}
+          });
+          setPagination({
+            total: data.data.pagination?.total || 0,
+            totalPages: data.data.pagination?.totalPages || 1,
+            currentPage: data.data.pagination?.currentPage || 1
+          });
+        } else {
+          setApplicants(data.applicants || []);
+          setJobDetails({
+            title: data.jobTitle || "Job",
+            stats: data.stats || {}
+          });
+          setPagination({
+            total: data.pagination?.total || 0,
+            totalPages: data.pagination?.totalPages || 1,
+            currentPage: data.pagination?.currentPage || 1
+          });
+        }
       }
     } catch (error) {
       console.error("Error fetching applicants:", error);
@@ -58,92 +76,50 @@ const ViewApplicants = () => {
 
   const handleStatusChange = async (applicationId, newStatus) => {
     try {
-      setUpdatingId(applicationId);
+      const { data } = await axios.put(`/jobs/employer/applications/${applicationId}/status`, {
+        status: newStatus
+      });
       
-      const response = await axios.put(
-        `/jobs/employer/applications/${applicationId}/status`,
-        { 
-          status: newStatus
-        }
-      );
-
-      if (response.data.success) {
-        // Update local state
-        setApplicants(prev => 
-          prev.map(app => 
-            app._id === applicationId 
-              ? { ...app, status: newStatus }
-              : app
-          )
-        );
-
-        // Update stats
-        const updatedApps = applicants.map(app => 
-          app._id === applicationId ? { ...app, status: newStatus } : app
-        );
-        
-        setStats({
-          total: updatedApps.length,
-          pending: updatedApps.filter(app => app.status === "Pending").length,
-          reviewed: updatedApps.filter(app => app.status === "Reviewed").length,
-          shortlisted: updatedApps.filter(app => app.status === "Shortlisted").length,
-          accepted: updatedApps.filter(app => app.status === "Accepted").length,
-          rejected: updatedApps.filter(app => app.status === "Rejected").length
-        });
-
-        toast.success(`Status updated to ${newStatus}`);
+      if (data.success) {
+        toast.success(`Application ${newStatus.toLowerCase()}`);
+        // Refresh the list
+        fetchApplicants();
       }
-      
     } catch (error) {
-      console.error("Status update error:", error);
-      
-      const errorMessage = error.response?.data?.message || "Failed to update status";
-      toast.error(errorMessage);
-      
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
-  const handleDownloadResume = (resumeUrl) => {
-    if (resumeUrl) {
-      window.open(resumeUrl, '_blank');
-    } else {
-      toast.error("No resume available");
+      console.error("Error updating status:", error);
+      toast.error(error.response?.data?.message || "Failed to update status");
     }
   };
 
   const getStatusColor = (status) => {
-    switch(status) {
+    switch (status) {
+      case "Pending":
+        return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
+      case "Reviewed":
+        return "bg-blue-500/20 text-blue-400 border-blue-500/30";
+      case "Shortlisted":
+        return "bg-purple-500/20 text-purple-400 border-purple-500/30";
       case "Accepted":
         return "bg-green-500/20 text-green-400 border-green-500/30";
       case "Rejected":
         return "bg-red-500/20 text-red-400 border-red-500/30";
-      case "Reviewed":
-        return "bg-blue-500/20 text-blue-400 border-blue-500/30";
-      case "Shortlisted":
-        return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
-      case "Pending":
-        return "bg-gray-500/20 text-gray-400 border-gray-500/30";
       default:
-        return "bg-indigo-500/20 text-indigo-400 border-indigo-500/30";
+        return "bg-gray-500/20 text-gray-400 border-gray-500/30";
     }
   };
 
-  const getStatusIcon = (status) => {
-    switch(status) {
-      case "Accepted": return "✅";
-      case "Rejected": return "❌";
-      case "Reviewed": return "👀";
-      case "Shortlisted": return "⭐";
-      case "Pending": return "⏳";
-      default: return "📝";
-    }
+  const handleFilterChange = (e) => {
+    setFilters(prev => ({ ...prev, status: e.target.value, page: 1 }));
+  };
+
+  const handlePageChange = (newPage) => {
+    setFilters(prev => ({ ...prev, page: newPage }));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-black via-indigo-950 to-purple-950 pt-24 px-4 md:px-8 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-indigo-950 to-purple-950">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-indigo-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-400">Loading applicants...</p>
@@ -153,239 +129,207 @@ const ViewApplicants = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-indigo-950 to-purple-950 pt-24 px-4 md:px-8 pb-12 text-white">
-      <motion.div
-        initial={{ opacity: 0, y: -30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="max-w-7xl mx-auto"
-      >
-        {/* Back Button */}
-        <button
-          onClick={() => navigate(-1)}
-          className="mb-6 text-gray-400 hover:text-white transition-colors flex items-center gap-2"
-        >
-          <span>←</span> Back to Jobs
-        </button>
-
-        {/* Header with Stats */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
+    <div className="min-h-screen bg-gradient-to-br from-black via-indigo-950 to-purple-950 pt-24 px-4 pb-12">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
-            <h1 className="text-4xl md:text-5xl font-bold mb-2">
-              Applicants for{" "}
-              <span className="text-indigo-400">{jobTitle || "Job"}</span>
+            <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
+              Applicants for {jobDetails?.title || "Job"} 👥
             </h1>
             <p className="text-gray-400">
-              {stats.total} {stats.total === 1 ? 'applicant' : 'applicants'} found
+              Review and manage applications
             </p>
           </div>
-
-          {/* Stats Cards */}
-          {stats.total > 0 && (
-            <div className="flex flex-wrap gap-3 mt-4 md:mt-0">
-              <div className="bg-white/10 px-3 py-2 rounded-xl text-sm">
-                <span className="text-yellow-400 font-bold">{stats.pending}</span>
-                <span className="text-gray-400 ml-1">Pending</span>
-              </div>
-              <div className="bg-white/10 px-3 py-2 rounded-xl text-sm">
-                <span className="text-blue-400 font-bold">{stats.reviewed}</span>
-                <span className="text-gray-400 ml-1">Reviewed</span>
-              </div>
-              <div className="bg-white/10 px-3 py-2 rounded-xl text-sm">
-                <span className="text-purple-400 font-bold">{stats.shortlisted}</span>
-                <span className="text-gray-400 ml-1">Shortlisted</span>
-              </div>
-              <div className="bg-white/10 px-3 py-2 rounded-xl text-sm">
-                <span className="text-green-400 font-bold">{stats.accepted}</span>
-                <span className="text-gray-400 ml-1">Accepted</span>
-              </div>
-              <div className="bg-white/10 px-3 py-2 rounded-xl text-sm">
-                <span className="text-red-400 font-bold">{stats.rejected}</span>
-                <span className="text-gray-400 ml-1">Rejected</span>
-              </div>
-            </div>
-          )}
+          
+          <button
+            onClick={() => navigate("/my-jobs")}
+            className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl transition text-white"
+          >
+            ← Back to Jobs
+          </button>
         </div>
 
+        {/* Stats Cards */}
+        {jobDetails?.stats && (
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+            <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl p-4">
+              <p className="text-gray-400 text-sm">Total</p>
+              <p className="text-2xl font-bold text-white">{jobDetails.stats.total || 0}</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl p-4">
+              <p className="text-gray-400 text-sm">Pending</p>
+              <p className="text-2xl font-bold text-yellow-400">{jobDetails.stats.Pending || 0}</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl p-4">
+              <p className="text-gray-400 text-sm">Reviewed</p>
+              <p className="text-2xl font-bold text-blue-400">{jobDetails.stats.Reviewed || 0}</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl p-4">
+              <p className="text-gray-400 text-sm">Shortlisted</p>
+              <p className="text-2xl font-bold text-purple-400">{jobDetails.stats.Shortlisted || 0}</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl p-4">
+              <p className="text-gray-400 text-sm">Accepted</p>
+              <p className="text-2xl font-bold text-green-400">{jobDetails.stats.Accepted || 0}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Filters */}
+        <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl p-4 mb-6">
+          <div className="flex flex-wrap items-center gap-4">
+            <label className="text-gray-400">Filter by status:</label>
+            <select
+              value={filters.status}
+              onChange={handleFilterChange}
+              className="px-4 py-2 bg-white/10 rounded-lg text-white outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="all" className="bg-gray-900">All Applications</option>
+              <option value="Pending" className="bg-gray-900">Pending</option>
+              <option value="Reviewed" className="bg-gray-900">Reviewed</option>
+              <option value="Shortlisted" className="bg-gray-900">Shortlisted</option>
+              <option value="Accepted" className="bg-gray-900">Accepted</option>
+              <option value="Rejected" className="bg-gray-900">Rejected</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Applicants List */}
         {applicants.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center py-16 bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10"
+            className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-12 text-center"
           >
             <div className="text-6xl mb-4">📭</div>
-            <h2 className="text-2xl font-bold text-gray-300 mb-4">
-              No Applicants Yet
-            </h2>
+            <h2 className="text-2xl font-bold text-white mb-4">No Applicants Yet</h2>
             <p className="text-gray-400 mb-8">
-              Your job posting hasn't received any applications yet.
+              No one has applied for this job yet. Check back later!
             </p>
             <button
-              onClick={() => navigate("/employer/jobs")}
+              onClick={() => navigate("/my-jobs")}
               className="bg-indigo-600 px-6 py-3 rounded-xl hover:bg-indigo-700 transition"
             >
               Back to My Jobs
             </button>
           </motion.div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {applicants.map((application, index) => (
-              <motion.div
-                key={application._id}
-                initial={{ opacity: 0, y: 40 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                whileHover={{ scale: 1.02 }}
-                className={`bg-white/10 backdrop-blur-xl border ${
-                  application.status === "Shortlisted"
-                    ? "border-yellow-500/50 ring-1 ring-yellow-500/50"
-                    : application.status === "Accepted"
-                    ? "border-green-500/50"
-                    : "border-white/20"
-                } rounded-3xl shadow-2xl overflow-hidden`}
-              >
-                {/* Card Header */}
-                <div className="p-6">
-                  {/* Applicant Header */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h2 className="text-xl font-bold text-indigo-300 mb-1">
-                        {application.applicant?.name || "Unknown Applicant"}
-                      </h2>
-                      <p className="text-sm text-gray-400">
-                        Applied {new Date(application.createdAt || application.appliedAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <span className="text-3xl opacity-50">
-                      {getStatusIcon(application.status)}
-                    </span>
-                  </div>
-
-                  {/* Contact Info */}
-                  <div className="space-y-2 text-sm text-gray-300 mb-4">
-                    <p className="flex items-center gap-2">
-                      <span>📧</span>
-                      <a href={`mailto:${application.applicant?.email}`} className="hover:text-indigo-400">
-                        {application.applicant?.email || "No email"}
-                      </a>
-                    </p>
-
-                    {application.applicant?.phone && (
-                      <p className="flex items-center gap-2">
-                        <span>📱</span>
-                        <a href={`tel:${application.applicant.phone}`} className="hover:text-indigo-400">
-                          {application.applicant.phone}
-                        </a>
-                      </p>
-                    )}
-
-                    {application.applicant?.skills && (
-                      <p className="flex items-start gap-2">
-                        <span>💼</span>
-                        <span className="text-gray-400">
-                          {Array.isArray(application.applicant.skills) 
-                            ? application.applicant.skills.join(', ')
-                            : application.applicant.skills}
+          <>
+            <div className="space-y-4">
+              {applicants.map((applicant, index) => (
+                <motion.div
+                  key={applicant._id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl p-6"
+                >
+                  <div className="flex flex-col md:flex-row justify-between gap-4">
+                    {/* Applicant Info */}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-xl font-semibold text-white">
+                          {applicant.applicant?.name || "Unknown"}
+                        </h3>
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(applicant.status)}`}>
+                          {applicant.status}
                         </span>
+                      </div>
+                      
+                      <div className="flex flex-wrap gap-4 text-sm text-gray-400 mb-3">
+                        <span>📧 {applicant.applicant?.email || "No email"}</span>
+                        {applicant.applicant?.phone && <span>📞 {applicant.applicant.phone}</span>}
+                      </div>
+
+                      {applicant.applicant?.skills && applicant.applicant.skills.length > 0 && (
+                        <div className="mb-3">
+                          <p className="text-xs text-gray-500 mb-1">Skills:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {applicant.applicant.skills.slice(0, 5).map((skill, i) => (
+                              <span key={i} className="px-2 py-1 bg-indigo-500/20 text-indigo-400 rounded-lg text-xs">
+                                {skill}
+                              </span>
+                            ))}
+                            {applicant.applicant.skills.length > 5 && (
+                              <span className="text-xs text-gray-500">+{applicant.applicant.skills.length - 5} more</span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      <p className="text-xs text-gray-500">
+                        Applied: {new Date(applicant.appliedAt || applicant.createdAt).toLocaleDateString()}
                       </p>
-                    )}
-
-                    {application.applicant?.bio && (
-                      <p className="flex items-start gap-2 text-xs text-gray-500 mt-2">
-                        <span>📝</span>
-                        <span className="line-clamp-2">{application.applicant.bio}</span>
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Resume Link */}
-                  {application.resume && (
-                    <button
-                      onClick={() => handleDownloadResume(application.resume)}
-                      className="mb-4 text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
-                    >
-                      <span>📄</span> View Resume
-                    </button>
-                  )}
-
-                  {/* Current Status Badge */}
-                  <div className="mb-4">
-                    <span className={`inline-block px-3 py-1 rounded-lg text-xs font-semibold border ${getStatusColor(application.status)}`}>
-                      {getStatusIcon(application.status)} Current: {application.status}
-                    </span>
-                  </div>
-
-                  {/* Status Update Section */}
-                  <div className="mt-4 border-t border-white/10 pt-4">
-                    <label className="block text-sm mb-2 text-gray-400">
-                      Update Application Status
-                    </label>
-
-                    <select
-                      value={application.status}
-                      onChange={(e) =>
-                        handleStatusChange(
-                          application._id,
-                          e.target.value
-                        )
-                      }
-                      disabled={updatingId === application._id}
-                      className="w-full bg-white/10 text-white px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
-                    >
-                      <option value="Pending" className="bg-gray-800">⏳ Pending</option>
-                      <option value="Reviewed" className="bg-gray-800">👀 Reviewed</option>
-                      <option value="Shortlisted" className="bg-gray-800">⭐ Shortlisted</option>
-                      <option value="Accepted" className="bg-gray-800">✅ Accepted</option>
-                      <option value="Rejected" className="bg-gray-800">❌ Rejected</option>
-                    </select>
-                    
-                    {updatingId === application._id && (
-                      <p className="text-xs text-indigo-400 mt-2 flex items-center gap-2">
-                        <div className="w-3 h-3 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
-                        Updating...
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Notes Section (if employer notes exist) */}
-                  {application.notes && (
-                    <div className="mt-4 p-3 bg-white/5 rounded-lg">
-                      <p className="text-xs text-gray-400 mb-1">Notes:</p>
-                      <p className="text-sm text-gray-300">{application.notes}</p>
                     </div>
-                  )}
-                </div>
 
-                {/* Card Footer */}
-                <div className="bg-white/5 px-6 py-3 text-xs text-gray-500 border-t border-white/10">
-                  Application ID: {application._id.slice(-6)}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
+                    {/* Actions */}
+                    <div className="flex flex-col gap-2 min-w-[120px]">
+                      <select
+                        value={applicant.status}
+                        onChange={(e) => handleStatusChange(applicant._id, e.target.value)}
+                        className="px-3 py-2 bg-white/10 rounded-lg text-white text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <option value="Pending" className="bg-gray-900">Pending</option>
+                        <option value="Reviewed" className="bg-gray-900">Reviewed</option>
+                        <option value="Shortlisted" className="bg-gray-900">Shortlisted</option>
+                        <option value="Accepted" className="bg-gray-900">Accepted</option>
+                        <option value="Rejected" className="bg-gray-900">Rejected</option>
+                      </select>
+                      
+                      {applicant.resume && (
+                        <a
+                          href={`http://localhost:4000${applicant.resume}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-center px-3 py-2 bg-indigo-600/50 hover:bg-indigo-600 rounded-lg transition text-sm"
+                        >
+                          View Resume
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
 
-        {/* Export/Download Options */}
-        {applicants.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="mt-8 flex justify-end"
-          >
-            <button
-              onClick={() => {
-                // You can implement CSV export here
-                toast.success("Export feature coming soon!");
-              }}
-              className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl text-sm transition-colors flex items-center gap-2"
-            >
-              <span>📊</span>
-              Export as CSV
-            </button>
-          </motion.div>
+            {/* Pagination */}
+            {pagination.totalPages > 1 && (
+              <div className="flex justify-center items-center gap-2 mt-8">
+                <button
+                  onClick={() => handlePageChange(filters.page - 1)}
+                  disabled={filters.page === 1}
+                  className="px-4 py-2 bg-white/10 rounded-xl hover:bg-white/20 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                
+                {[...Array(pagination.totalPages)].map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handlePageChange(i + 1)}
+                    className={`w-10 h-10 rounded-xl transition ${
+                      filters.page === i + 1
+                        ? "bg-indigo-600 text-white"
+                        : "bg-white/10 hover:bg-white/20"
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+                
+                <button
+                  onClick={() => handlePageChange(filters.page + 1)}
+                  disabled={filters.page === pagination.totalPages}
+                  className="px-4 py-2 bg-white/10 rounded-xl hover:bg-white/20 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </>
         )}
-      </motion.div>
+      </div>
     </div>
   );
 };
