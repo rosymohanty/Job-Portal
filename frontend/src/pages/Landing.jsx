@@ -159,14 +159,14 @@ Search Jobs
 
 <div className="text-center">
 <div className="text-3xl font-bold text-indigo-400">
-{stats.activeJobs}+
+1250+
 </div>
 <p className="text-gray-400">Active Jobs</p>
 </div>
 
 <div className="text-center">
 <div className="text-3xl font-bold text-purple-400">
-{stats.totalCompanies}+
+320+
 </div>
 <p className="text-gray-400">Companies</p>
 </div>
@@ -188,11 +188,11 @@ Search Jobs
 <div className="max-w-5xl mx-auto text-center mt-24 px-4">
 
 <h3 className="text-3xl font-bold mb-6">
-About <span className="text-indigo-400">TransHire</span>
+About <span className="text-indigo-400">CareerHive</span>
 </h3>
 
 <p className="text-gray-300">
-TransHire connects talented professionals with leading companies.
+CareerHive connects talented professionals with leading companies.
 Our platform simplifies recruitment for both job seekers and employers.
 </p>
 
@@ -362,7 +362,7 @@ Subscribe
 <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-6 px-4 text-gray-400">
 
 <div>
-<h4 className="text-indigo-400 font-semibold mb-2">TransHire</h4>
+<h4 className="text-indigo-400 font-semibold mb-2">CareerHive</h4>
 <p>Your gateway to career opportunities.</p>
 </div>
 
@@ -384,7 +384,7 @@ Subscribe
 </div>
 
 <p className="text-center text-gray-500 text-sm mt-6">
-© 2024 TransHire
+© 2024 CareerHive
 </p>
 
 </footer>
