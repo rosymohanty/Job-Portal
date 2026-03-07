@@ -73,7 +73,7 @@ ${scrolled
 to="/"
 className="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent"
 >
-TransHire
+CareerHive
 </Link>
 
 {/* DESKTOP MENU */}
