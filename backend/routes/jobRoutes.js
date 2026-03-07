@@ -18,7 +18,8 @@ const {
   getSavedJobs,
   checkApplicationStatus,
   getSimilarJobs,
-  getJobStats  // Added for admin use
+  getJobStats,
+  toggleJobStatus  // Added for admin use
 } = require("../controllers/jobController");
 
 const { protect, authorizeRoles, optionalAuth } = require("../middleware/authMiddleware");
@@ -101,7 +102,7 @@ router.get("/saved", protect, authorizeRoles("user"), getSavedJobs);
  * @desc    Get employer dashboard statistics
  * @access  Private (Employer only)
  */
-router.get("/employer/dashboard", protect, authorizeRoles("employer"), employerDashboardStats);
+router.get("/employer/stats", protect, authorizeRoles("employer"), employerDashboardStats);
 
 /**
  * @route   GET /api/jobs/employer/jobs
@@ -139,14 +140,14 @@ router.post("/employer/jobs", protect, authorizeRoles("employer"), postJob);
  * @desc    Update a job
  * @access  Private (Employer only)
  */
-router.put("/employer/jobs/:id", protect, authorizeRoles("employer"), validateObjectId("id"), updateJob);
+router.put("/:id", protect, authorizeRoles("employer"), validateObjectId("id"), updateJob);
 
 /**
  * @route   DELETE /api/jobs/employer/jobs/:id
  * @desc    Delete a job
  * @access  Private (Employer only)
  */
-router.delete("/employer/jobs/:id", protect, authorizeRoles("employer"), validateObjectId("id"), deleteJob);
+router.delete("/:id", protect, authorizeRoles("employer"), validateObjectId("id"), deleteJob);
 
 /**
  * @route   PUT /api/jobs/employer/applications/:id/status
@@ -164,6 +165,12 @@ router.put("/employer/applications/:id/status", protect, authorizeRoles("employe
  * @access  Private (Admin only)
  */
 router.get("/admin/stats", protect, authorizeRoles("admin"), getJobStats);
+router.patch(
+  "/:id/toggle-status",
+  protect,
+  authorizeRoles("employer"),
+  toggleJobStatus
+);
 
 // ================= HEALTH CHECK =================
 /**

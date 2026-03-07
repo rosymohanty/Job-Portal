@@ -19,36 +19,30 @@ const EmployerDashboard = () => {
   }, []);
 
   const fetchDashboardData = async () => {
-    try {
-      // Fetch jobs posted by employer
-      const jobsResponse = await axios.get("/jobs/employer/jobs");
-      console.log("Jobs response:", jobsResponse.data);
-      
-      // Fetch dashboard stats
-      const statsResponse = await axios.get("/jobs/employer/dashboard");
-      console.log("Stats response:", statsResponse.data);
+  try {
+    const { data } = await axios.get("/jobs/employer/stats");
 
-      // Update stats based on API response structure
-      if (jobsResponse.data.success) {
-        const jobs = jobsResponse.data.data?.jobs || [];
-        const activeJobs = jobs.filter(job => job.isActive).length;
-        const totalApplications = jobs.reduce((sum, job) => sum + (job.applicantCount || 0), 0);
-        
-        setStats({
-          totalJobs: jobs.length,
-          activeJobs: activeJobs,
-          totalApplications: totalApplications,
-          recentJobs: jobs.slice(0, 5) // Last 5 jobs
-        });
-      }
+    console.log("Stats response:", data);
 
-      setLoading(false);
-    } catch (error) {
-      console.error("Failed to fetch dashboard data:", error);
-      toast.error("Failed to load dashboard data");
-      setLoading(false);
+    if (data.success) {
+      const overview = data.data.overview;
+
+      setStats({
+        totalJobs: overview.totalJobs,
+        activeJobs: overview.activeJobs,
+        totalApplications: overview.totalApplications,
+        recentJobs: []
+      });
     }
-  };
+
+    setLoading(false);
+
+  } catch (error) {
+    console.error("Failed to fetch dashboard data:", error);
+    toast.error("Failed to load dashboard data");
+    setLoading(false);
+  }
+};
 
   if (loading) {
     return (

@@ -12,7 +12,9 @@ const {
   updateUserProfile, 
   deleteUserAccount,
   deleteEmployerAccount,
-  logout
+  logout,
+  forgotPassword,
+  resetPassword
 } = require("../controllers/authController");
 const { protect, authorizeRoles } = require("../middleware/authMiddleware");
 const upload = require("../middleware/uploadMiddleware");
@@ -23,7 +25,9 @@ router.post("/register", validateRegistration, register);
 router.post("/login", validateLogin, login);
 router.post("/register-employer", validateRegistration, registerEmployer);
 router.post("/login-employer", validateLogin, loginEmployer);
-
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password/:token", resetPassword);
+router.put("/update-profile", protect, updateProfile);
 // Protected routes
 router.get("/profile", protect, getProfile);
 router.put("/profile", protect, updateProfile);

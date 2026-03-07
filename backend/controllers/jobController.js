@@ -312,88 +312,47 @@ const jobData = {
 // @route   PUT /api/jobs/:id
 // @access  Private (Employer only)
 const updateJob = async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
   try {
     const employerId = req.user._id;
     const jobId = req.params.id;
 
-    // Validate job ID
-    if (!mongoose.Types.ObjectId.isValid(jobId)) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(400).json({ 
-        success: false,
-        message: "Invalid job ID format" 
-      });
-    }
+    const job = await Job.findById(jobId);
 
-    // Find job
-    const job = await Job.findById(jobId).session(session);
     if (!job) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: "Job not found" 
+        message: "Job not found"
       });
     }
 
-    // Check authorization
-    if (job.employer.toString() !== employerId.toString()) {
-      await session.abortTransaction();
-      session.endSession();
+    if (!job.employer || job.employer.toString() !== employerId.toString()) {
       return res.status(403).json({
         success: false,
-        message: "You are not authorized to update this job",
+        message: "You are not authorized to update this job"
       });
     }
 
-    // Update fields (only provided ones)
-    const updatableFields = [
-      'title', 'description', 'location', 'salary', 
-      'jobType', 'isActive', 'requirements', 'responsibilities',
-      'benefits', 'experienceLevel', 'applicationDeadline',
-      'minSalary', 'maxSalary', 'currency'
-    ];
-
-    updatableFields.forEach(field => {
-      if (req.body[field] !== undefined) {
-        if (field === 'description') {
-          job[field] = sanitizeContent(req.body[field]);
-        } else if (field.includes('Date') || field === 'applicationDeadline') {
-          job[field] = req.body[field] ? new Date(req.body[field]) : undefined;
-        } else if (field === 'minSalary' || field === 'maxSalary') {
-          job[field] = req.body[field] ? parseInt(req.body[field]) : undefined;
-        } else {
-          job[field] = typeof req.body[field] === 'string' 
-            ? req.body[field].trim() 
-            : req.body[field];
-        }
-      }
-    });
-
-    const updatedJob = await job.save({ session });
-    await session.commitTransaction();
-    session.endSession();
+    const updatedJob = await Job.findByIdAndUpdate(
+      jobId,
+      req.body,
+      { new: true }
+    );
 
     res.status(200).json({
       success: true,
       message: "Job updated successfully",
-      data: { job: updatedJob }
+      job: updatedJob
     });
+
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
     console.error("Update job error:", error);
-    res.status(500).json({ 
+
+    res.status(500).json({
       success: false,
-      message: "Failed to update job" 
+      message: "Server Error"
     });
   }
 };
-
 // @desc    Delete a job (Employer only)
 // @route   DELETE /api/jobs/:id
 // @access  Private (Employer only)
@@ -695,101 +654,56 @@ const viewAppliedJobs = async (req, res) => {
 // @desc    Get jobs posted by current employer
 // @route   GET /api/jobs/my-jobs
 // @access  Private (Employer only)
+// @desc    Get jobs posted by current employer
+// @route   GET /api/jobs/employer/jobs
+// @access  Private (Employer only)
+
 const getMyPostedJobs = async (req, res) => {
   try {
     const employerId = req.user._id;
-    const { page = 1, limit = 10 } = req.query;
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
-    const skip = (pageNum - 1) * limitNum;
 
-    // Get jobs with pagination
     const jobs = await Job.find({ employer: employerId })
       .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limitNum)
       .lean();
 
-    // Get applicant counts for all jobs in one query
     const jobIds = jobs.map(job => job._id);
-    
+
+    // Get applicant count
     const applicantStats = await Application.aggregate([
       { $match: { job: { $in: jobIds } } },
-      { 
-        $group: { 
-          _id: "$job", 
+      {
+        $group: {
+          _id: "$job",
           totalApplicants: { $sum: 1 }
-        } 
+        }
       }
     ]);
 
-    const statusBreakdown = await Application.aggregate([
-      { $match: { job: { $in: jobIds } } },
-      { 
-        $group: { 
-          _id: { 
-            job: "$job", 
-            status: "$status" 
-          }, 
-          count: { $sum: 1 } 
-        } 
-      }
-    ]);
-
-    // Create maps for easy lookup
     const applicantCountMap = applicantStats.reduce((map, stat) => {
       map[stat._id.toString()] = stat.totalApplicants;
       return map;
     }, {});
 
-    const statusMap = {};
-    statusBreakdown.forEach(item => {
-      const jobId = item._id.job.toString();
-      if (!statusMap[jobId]) {
-        statusMap[jobId] = {};
-      }
-      statusMap[jobId][item._id.status] = item.count;
-    });
-
-    // Combine data
     const jobsWithStats = jobs.map(job => ({
       ...job,
-      applicantCount: applicantCountMap[job._id.toString()] || 0,
-      statusBreakdown: statusMap[job._id.toString()] || {
-        Pending: 0,
-        Reviewed: 0,
-        Shortlisted: 0,
-        Accepted: 0,
-        Rejected: 0
-      }
+      applicantCount: applicantCountMap[job._id.toString()] || 0
     }));
-
-    const totalJobs = await Job.countDocuments({ employer: employerId });
-    const totalPages = Math.ceil(totalJobs / limitNum);
 
     res.status(200).json({
       success: true,
-      data: {
-        jobs: jobsWithStats,
-        pagination: {
-          total: totalJobs,
-          totalPages,
-          currentPage: pageNum,
-          perPage: limitNum,
-          hasNext: pageNum < totalPages,
-          hasPrev: pageNum > 1
-        }
-      }
+      jobs: jobsWithStats,
+      totalJobs: jobsWithStats.length
     });
+
   } catch (error) {
     console.error("Get my posted jobs error:", error);
-    res.status(500).json({ 
+
+    res.status(500).json({
       success: false,
-      message: "Failed to fetch jobs" 
+      message: "Failed to fetch jobs"
     });
   }
 };
-
 // @desc    View applicants for a specific job
 // @route   GET /api/jobs/:id/applicants
 // @access  Private (Employer only)
@@ -1397,6 +1311,55 @@ const getJobStats = async (req, res) => {
     });
   }
 };
+// @desc    Toggle job active/inactive status
+// @route   PATCH /api/jobs/:id/toggle-status
+// @access  Private (Employer only)
+
+const toggleJobStatus = async (req, res) => {
+  try {
+    const employerId = req.user._id;
+    const jobId = req.params.id;
+
+    const job = await Job.findById(jobId);
+
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: "Job not found"
+      });
+    }
+
+    // check ownership
+    if (job.employer.toString() !== employerId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to update this job"
+      });
+    }
+
+    // toggle status
+    job.isActive = !job.isActive;
+
+    await job.save();
+
+    res.status(200).json({
+      success: true,
+      message: job.isActive
+        ? "Job activated successfully"
+        : "Job deactivated successfully",
+      job
+    });
+
+  } catch (error) {
+    console.error("Toggle job status error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to update job status"
+    });
+  }
+};
+
 module.exports = {
   getAllJobs,
   getSingleJob,
@@ -1413,5 +1376,6 @@ module.exports = {
   getSavedJobs,
   checkApplicationStatus,
   getSimilarJobs,
-  getJobStats // Added missing function
+  getJobStats,
+  toggleJobStatus,
 };

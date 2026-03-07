@@ -3,6 +3,7 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const Application = require("../models/Application");
+const crypto = require("crypto");
 
 // @desc    Register a new user (job seeker)
 // @route   POST /api/auth/register
@@ -343,48 +344,105 @@ const getProfile = async (req, res) => {
 // @access  Private
 const updateProfile = async (req, res) => {
   try {
+
     const userId = req.user._id;
     const updates = {};
 
-    // Common fields
-    if (req.body.name) updates.name = req.body.name.trim();
-    if (req.body.phone) updates.phone = req.body.phone.trim();
-    if (req.body.bio) updates.bio = req.body.bio.trim();
+    // ===== COMMON FIELDS =====
 
-    // Employer-specific fields
+    if (req.body.name) {
+      updates.name = req.body.name.trim();
+    }
+
+    if (req.body.phone) {
+      updates.phone = req.body.phone.trim();
+    }
+
+    if (req.body.bio) {
+      updates.bio = req.body.bio.trim();
+    }
+
+
+    // ===== EMPLOYER FIELDS =====
+
     if (req.user.role === "employer") {
-      if (req.body.companyName) updates.companyName = req.body.companyName.trim();
-      if (req.body.companyWebsite) updates.companyWebsite = req.body.companyWebsite.trim();
-      if (req.body.companyLocation) updates.companyLocation = req.body.companyLocation.trim();
+
+      if (req.body.companyName) {
+        updates.companyName = req.body.companyName.trim();
+      }
+
+      if (req.body.companyWebsite) {
+        updates.companyWebsite = req.body.companyWebsite.trim();
+      }
+
+      if (req.body.companyLocation) {
+        updates.companyLocation = req.body.companyLocation.trim();
+      }
+
     }
 
-    // User-specific fields
+
+    // ===== JOB SEEKER FIELDS =====
+
     if (req.user.role === "user") {
+
       if (req.body.skills) {
-        // Convert skills string to array if needed
-        updates.skills = Array.isArray(req.body.skills) 
-          ? req.body.skills 
-          : req.body.skills.split(',').map(skill => skill.trim());
+
+        if (Array.isArray(req.body.skills)) {
+          updates.skills = req.body.skills;
+        } else {
+          updates.skills = req.body.skills
+            .split(",")
+            .map(skill => skill.trim())
+            .filter(Boolean);
+        }
+
       }
+
     }
+
+
+    // ===== PROFILE IMAGE =====
+
+    if (req.file) {
+      updates.profileImage = req.file.path;
+    }
+
 
     const user = await User.findByIdAndUpdate(
       userId,
       { $set: updates },
-      { new: true, runValidators: true }
+      {
+        new: true,
+        runValidators: true
+      }
     ).select("-password");
+
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
 
     res.status(200).json({
       success: true,
       message: "Profile updated successfully",
-      user,
+      user
     });
+
+
   } catch (error) {
+
     console.error("Update profile error:", error);
-    res.status(500).json({ 
+
+    res.status(500).json({
       success: false,
-      message: "Failed to update profile" 
+      message: "Failed to update profile"
     });
+
   }
 };
 
@@ -660,6 +718,97 @@ const logout = (req, res) => {
     message: "Logged out successfully",
   });
 };
+const forgotPassword = async (req, res) => {
+
+  try {
+
+    const { email } = req.body;
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    const resetToken = crypto.randomBytes(32).toString("hex");
+
+    user.resetPasswordToken = resetToken;
+
+    user.resetPasswordExpire = Date.now() + 10 * 60 * 1000;
+
+    await user.save();
+
+    const resetUrl = `http://localhost:5173/reset-password/${resetToken}`;
+
+    const message = `
+      <h2>Password Reset Request</h2>
+      <p>You requested to reset your password.</p>
+      <a href="${resetUrl}" style="padding:10px 20px;background:#4f46e5;color:white;text-decoration:none;border-radius:5px">
+        Reset Password
+      </a>
+      <p>This link will expire in 10 minutes.</p>
+    `;
+
+    await sendEmail({
+      email: user.email,
+      subject: "Password Reset - Job Portal",
+      message
+    });
+
+    res.json({
+      success: true,
+      message: "Reset password email sent"
+    });
+
+  } catch (error) {
+
+    console.error(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Email could not be sent"
+    });
+
+  }
+
+};
+const resetPassword = async (req, res) => {
+  try {
+    const token = req.params.token;
+
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpire: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired token"
+      });
+    }
+
+    user.password = req.body.password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "Password reset successful"
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+};
 
 // ✅ EXPORT ALL FUNCTIONS
 module.exports = {
@@ -675,4 +824,6 @@ module.exports = {
   deleteUserAccount,
   deleteEmployerAccount,
   logout,
+  forgotPassword,
+  resetPassword
 };

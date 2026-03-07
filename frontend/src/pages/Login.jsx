@@ -182,14 +182,13 @@ const Login = () => {
 
         {/* Forgot Password Link */}
         <div className="text-right mb-6">
-          <button
-            type="button"
-            onClick={() => toast.error("Password reset feature coming soon!")}
-            className="text-sm text-indigo-400 hover:text-indigo-300 hover:underline"
-          >
-            Forgot Password?
-          </button>
-        </div>
+  <Link
+    to="/forgot-password"
+    className="text-sm text-indigo-400 hover:text-indigo-300 hover:underline"
+  >
+    Forgot Password?
+  </Link>
+</div>
 
         {/* Login Button */}
         <button
