@@ -3,7 +3,7 @@ import axios from "axios";
 const API_URL =
   import.meta.env.MODE === "development"
     ? "http://localhost:4000/api"
-    : "https://your-backend-url.onrender.com/api";
+    : "https://job-portal-jtt0.onrender.com/api";
 
 const instance = axios.create({
   baseURL: API_URL,
