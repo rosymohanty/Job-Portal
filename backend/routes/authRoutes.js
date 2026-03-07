@@ -25,8 +25,9 @@ router.post("/register", validateRegistration, register);
 router.post("/login", validateLogin, login);
 router.post("/register-employer", validateRegistration, registerEmployer);
 router.post("/login-employer", validateLogin, loginEmployer);
-router.post("/forgot-password", forgotPassword);
-router.post("/reset-password/:token", resetPassword);
+router.post("/forgot-password",forgotPassword);
+router.post("/reset-password",resetPassword);
+router.post("/change-password",protect,changePassword);
 router.put("/update-profile", protect, updateProfile);
 // Protected routes
 router.get("/profile", protect, getProfile);

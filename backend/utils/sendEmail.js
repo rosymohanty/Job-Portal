@@ -1,21 +1,26 @@
 const nodemailer = require("nodemailer");
 
-const sendEmail = async (options) => {
+const sendEmail = async (to, subject, html) => {
+
+  const testAccount = await nodemailer.createTestAccount();
 
   const transporter = nodemailer.createTransport({
-    service: "gmail",
+    host: "smtp.ethereal.email",
+    port: 587,
     auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
+      user: testAccount.user,
+      pass: testAccount.pass
     }
   });
 
-  await transporter.sendMail({
-    from: `Job Portal <${process.env.EMAIL_USER}>`,
-    to: options.email,
-    subject: options.subject,
-    html: options.message
+  const info = await transporter.sendMail({
+    from: '"TransHire" <no-reply@transhire.com>',
+    to,
+    subject,
+    html
   });
+
+  console.log("Preview URL:", nodemailer.getTestMessageUrl(info));
 
 };
 

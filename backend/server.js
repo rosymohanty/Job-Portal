@@ -4,7 +4,6 @@ const cors=require("cors");
 const connectDB=require("./config/db");
 const authRoute=require("./routes/authRoutes");
 const jobRoute=require("./routes/jobRoutes");
-const adminRoutes = require("./routes/adminRoutes");
 dotenv.config();
 connectDB();
 const app=express();
