@@ -13,15 +13,13 @@ const {
   toggleUserApproval,
   getAllJobs,
   deleteJob,
-  getAdminDashboardStats
+  getAdminDashboardStats,
 } = require("../controllers/adminController");
 
 
 // ================= Protect all admin routes =================
 router.use(protect);
 router.use(authorizeRoles("admin"));
-
-
 // ================= USER MANAGEMENT =================
 
 // Get all users
@@ -45,23 +43,14 @@ router.patch(
   validateObjectId("id"),
   toggleUserApproval
 );
-
-
 // ================= JOB MANAGEMENT =================
-
 // Get all jobs
 router.get("/jobs", getAllJobs);
-
 // Delete job
 router.delete("/jobs/:id", validateObjectId("id"), deleteJob);
-
-
 // ================= ADMIN DASHBOARD =================
-
 // Admin dashboard stats
 router.get("/dashboard/stats", getAdminDashboardStats);
-
-
 // ================= HEALTH CHECK =================
 
 router.get("/health", (req, res) => {

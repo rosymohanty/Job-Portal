@@ -201,15 +201,16 @@ const toggleUserApproval = async (req, res) => {
       });
     }
 
-    // toggle approval
-    user.isApproved = !user.isApproved;
-
-    await user.save();
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.id,
+      { isApproved: !user.isApproved },
+      { new: true }
+    ).select("-password");
 
     res.status(200).json({
       success: true,
       message: "User approval status updated",
-      data: user
+      data: updatedUser
     });
 
   } catch (error) {
@@ -223,7 +224,6 @@ const toggleUserApproval = async (req, res) => {
 
   }
 };
-
 module.exports = {
   getUserStats,
   getAllUsers,
