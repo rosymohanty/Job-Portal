@@ -1359,7 +1359,32 @@ const toggleJobStatus = async (req, res) => {
     });
   }
 };
+const getFeaturedJobs = async (req, res) => {
+  try {
+    const limit = parseInt(req.params.limit) || 3;
 
+    const jobs = await Job.find({ status: "active" })
+      .sort({ createdAt: -1 })
+      .limit(limit);
+
+    res.json(jobs);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+const getJobStatsOverview = async (req, res) => {
+  try {
+    const totalJobs = await Job.countDocuments();
+    const activeJobs = await Job.countDocuments({ status: "active" });
+
+    res.json({
+      totalJobs,
+      activeJobs
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 module.exports = {
   getAllJobs,
   getSingleJob,
@@ -1378,4 +1403,6 @@ module.exports = {
   getSimilarJobs,
   getJobStats,
   toggleJobStatus,
+  getFeaturedJobs,
+  getJobStatsOverview
 };

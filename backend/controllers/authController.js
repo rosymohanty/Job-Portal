@@ -790,39 +790,7 @@ const changePassword=async(req,res)=>{
     res.status(500).json({message:error.message});
   }
 }
-const toggleApproval = async (req, res) => {
-  try {
 
-    const user = await User.findById(req.params.id);
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found"
-      });
-    }
-
-    user.isApproved = !user.isApproved;
-
-    await user.save();
-
-    res.json({
-      success: true,
-      message: "Employer approval updated",
-      isApproved: user.isApproved
-    });
-
-  } catch (error) {
-
-    console.error(error);
-
-    res.status(500).json({
-      success: false,
-      message: "Server Error"
-    });
-
-  }
-};
 // ✅ EXPORT ALL FUNCTIONS
 module.exports = {
   register,
@@ -839,5 +807,4 @@ module.exports = {
   logout,
   forgotPassword,
   resetPassword,
-  toggleApproval
 };
