@@ -6,11 +6,7 @@ import axios from "../utils/axios";
 import {
   Briefcase,
   Users,
-  Rocket,
-  Search,
-  MapPin,
-  Star,
-  Mail
+  Rocket
 } from "lucide-react";
 
 const Landing = () => {
@@ -71,137 +67,110 @@ const Landing = () => {
 
   return (
 
-<div className="min-h-screen bg-gradient-to-br from-black via-indigo-950 to-purple-950 text-white">
+<div className="min-h-screen bg-gradient-to-br from-black via-indigo-950 to-purple-950 text-white overflow-x-hidden">
 
-{/* NAVBAR */}
 {/* HERO */}
 
-<div className="text-center mt-16 px-4">
+<motion.div
+initial={{opacity:0,y:40}}
+animate={{opacity:1,y:0}}
+transition={{duration:0.8}}
+className="text-center mt-20 px-4"
+>
 
-<h2 className="text-6xl font-extrabold">
+<h2 className="text-6xl font-extrabold leading-tight">
 
 Find Your
 <span className="text-indigo-400"> Dream Job</span>
 
 </h2>
 
-<p className="text-gray-300 mt-6 max-w-xl mx-auto">
+<p className="text-gray-300 mt-6 max-w-xl mx-auto text-lg">
 Discover amazing opportunities and connect with top companies.
 </p>
 
 {/* ICON HIGHLIGHTS */}
 
-<div className="flex justify-center gap-8 mt-8">
+<div className="flex justify-center gap-10 mt-10">
 
-<div className="flex items-center gap-2 text-indigo-400">
-<Briefcase size={20}/> Jobs
-</div>
+<motion.div whileHover={{scale:1.2}} className="flex items-center gap-2 text-indigo-400">
+<Briefcase size={22}/> Jobs
+</motion.div>
 
-<div className="flex items-center gap-2 text-purple-400">
-<Users size={20}/> Companies
-</div>
+<motion.div whileHover={{scale:1.2}} className="flex items-center gap-2 text-purple-400">
+<Users size={22}/> Companies
+</motion.div>
 
-<div className="flex items-center gap-2 text-pink-400">
-<Rocket size={20}/> Fast Hiring
-</div>
-
-</div>
-
-
-{/* SEARCH BAR */}
-
-<div className="flex flex-wrap justify-center gap-4 mt-10">
-
-<div className="flex items-center bg-white/10 px-4 py-2 rounded-lg">
-
-<Search size={18}/>
-
-<input
-value={search}
-onChange={(e)=>setSearch(e.target.value)}
-placeholder="Job title"
-className="bg-transparent outline-none ml-2"
-/>
+<motion.div whileHover={{scale:1.2}} className="flex items-center gap-2 text-pink-400">
+<Rocket size={22}/> Fast Hiring
+</motion.div>
 
 </div>
 
-
-<div className="flex items-center bg-white/10 px-4 py-2 rounded-lg">
-
-<MapPin size={18}/>
-
-<input
-value={location}
-onChange={(e)=>setLocation(e.target.value)}
-placeholder="Location"
-className="bg-transparent outline-none ml-2"
-/>
-
-</div>
-
-<Link
-to="/jobs"
-className="bg-indigo-600 px-6 py-2 rounded-lg hover:bg-indigo-700"
->
-Search Jobs
-</Link>
-
-</div>
-
-</div>
-
+</motion.div>
 
 {/* STATS */}
 
 {!loading && (
 
-<div className="flex justify-center gap-16 mt-16">
+<motion.div
+initial={{opacity:0}}
+animate={{opacity:1}}
+transition={{delay:0.5}}
+className="flex justify-center gap-20 mt-20"
+>
 
-<div className="text-center">
-<div className="text-3xl font-bold text-indigo-400">
-1250+
-</div>
-<p className="text-gray-400">Active Jobs</p>
+{[
+{value:"1250+",label:"Active Jobs",color:"text-indigo-400"},
+{value:"320+",label:"Companies",color:"text-purple-400"},
+{value:"500+",label:"Placements",color:"text-pink-400"},
+].map((item,i)=>(
+
+<motion.div
+key={i}
+whileHover={{scale:1.1}}
+className="text-center"
+>
+
+<div className={`text-4xl font-bold ${item.color}`}>
+{item.value}
 </div>
 
-<div className="text-center">
-<div className="text-3xl font-bold text-purple-400">
-320+
-</div>
-<p className="text-gray-400">Companies</p>
-</div>
+<p className="text-gray-400 mt-2">{item.label}</p>
 
-<div className="text-center">
-<div className="text-3xl font-bold text-pink-400">
-500+
-</div>
-<p className="text-gray-400">Placements</p>
-</div>
+</motion.div>
 
-</div>
+))}
+
+</motion.div>
 
 )}
 
 
 {/* ABOUT */}
 
-<div className="max-w-5xl mx-auto text-center mt-24 px-4">
+<motion.div
+initial={{opacity:0,y:40}}
+whileInView={{opacity:1,y:0}}
+transition={{duration:0.6}}
+className="max-w-5xl mx-auto text-center mt-28 px-4"
+>
 
 <h3 className="text-3xl font-bold mb-6">
 About <span className="text-indigo-400">CareerHive</span>
 </h3>
 
-<p className="text-gray-300">
+<p className="text-gray-300 text-lg">
 CareerHive connects talented professionals with leading companies.
 Our platform simplifies recruitment for both job seekers and employers.
 </p>
 
-</div>
+</motion.div>
 
 
 {/* FEATURES */}
 
-<div className="max-w-6xl mx-auto mt-20 grid md:grid-cols-3 gap-6 px-4">
+<div className="max-w-6xl mx-auto mt-20 grid md:grid-cols-3 gap-8 px-4">
 
 {[
 {icon:<Briefcase size={40}/>,title:"Smart Job Search",desc:"Find jobs matching your skills."},
@@ -211,17 +180,20 @@ Our platform simplifies recruitment for both job seekers and employers.
 
 <motion.div
 key={i}
-whileHover={{scale:1.05}}
-className="bg-white/10 border border-white/20 p-6 rounded-2xl text-center"
+whileHover={{scale:1.08}}
+whileInView={{opacity:1,y:0}}
+initial={{opacity:0,y:40}}
+transition={{duration:0.5}}
+className="bg-white/10 border border-white/20 p-8 rounded-2xl text-center backdrop-blur-xl"
 >
 
 <div className="text-indigo-400 flex justify-center mb-4">
 {item.icon}
 </div>
 
-<h4 className="font-semibold">{item.title}</h4>
+<h4 className="font-semibold text-lg">{item.title}</h4>
 
-<p className="text-gray-400 text-sm mt-2">
+<p className="text-gray-400 text-sm mt-3">
 {item.desc}
 </p>
 
@@ -238,21 +210,24 @@ className="bg-white/10 border border-white/20 p-6 rounded-2xl text-center"
 
 <div className="max-w-6xl mx-auto mt-24 px-4">
 
-<h3 className="text-3xl text-center font-bold mb-10">
+<h3 className="text-3xl text-center font-bold mb-12">
 Featured <span className="text-indigo-400">Jobs</span>
 </h3>
 
-<div className="grid md:grid-cols-3 gap-6">
+<div className="grid md:grid-cols-3 gap-8">
 
 {featuredJobs.map(job=>(
 
 <motion.div
 key={job._id}
 whileHover={{scale:1.05}}
-className="bg-white/10 border border-white/20 p-6 rounded-2xl"
+initial={{opacity:0,y:40}}
+whileInView={{opacity:1,y:0}}
+transition={{duration:0.5}}
+className="bg-white/10 border border-white/20 p-6 rounded-2xl backdrop-blur-lg"
 >
 
-<h4 className="text-indigo-300 font-semibold">
+<h4 className="text-indigo-300 font-semibold text-lg">
 {job.title}
 </h4>
 
@@ -273,88 +248,6 @@ className="bg-white/10 border border-white/20 p-6 rounded-2xl"
 </div>
 
 )}
-
-
-{/* TESTIMONIALS */}
-
-<div className="max-w-6xl mx-auto mt-24 px-4">
-
-<h3 className="text-3xl text-center font-bold mb-10">
-User <span className="text-indigo-400">Feedback</span>
-</h3>
-
-<div className="grid md:grid-cols-3 gap-6">
-
-{[
-{name:"Rahul",text:"Found my dream job here."},
-{name:"Priya",text:"Best platform for job search."},
-{name:"Amit",text:"Amazing experience using TransHire."}
-].map((review,i)=>(
-
-<div
-key={i}
-className="bg-white/10 border border-white/20 p-6 rounded-2xl"
->
-
-<div className="flex text-yellow-400 mb-2">
-
-<Star size={16}/>
-<Star size={16}/>
-<Star size={16}/>
-<Star size={16}/>
-<Star size={16}/>
-
-</div>
-
-<p className="text-gray-300 text-sm">
-{review.text}
-</p>
-
-<h4 className="text-indigo-400 mt-4">
-{review.name}
-</h4>
-
-</div>
-
-))}
-
-</div>
-
-</div>
-
-
-{/* NEWSLETTER */}
-
-<div className="text-center mt-24 px-4">
-
-<h3 className="text-3xl font-bold">
-Stay Updated
-</h3>
-
-<p className="text-gray-400 mt-2">
-Subscribe for latest job alerts.
-</p>
-
-<div className="flex justify-center gap-3 mt-6">
-
-<input
-type="email"
-placeholder="Enter email"
-className="px-4 py-2 rounded-lg bg-white/10 border border-white/20"
-/>
-
-<button className="flex items-center gap-2 px-6 py-2 bg-indigo-600 rounded-lg hover:bg-indigo-700">
-
-<Mail size={16}/>
-Subscribe
-
-</button>
-
-</div>
-
-</div>
-
-
 {/* FOOTER */}
 
 <footer className="mt-24 border-t border-white/10 py-10">
@@ -369,7 +262,6 @@ Subscribe
 <div>
 <h4 className="text-indigo-400 font-semibold mb-2">Links</h4>
 <ul className="space-y-1">
-<li><Link to="/jobs">Jobs</Link></li>
 <li><Link to="/login">Login</Link></li>
 <li><Link to="/register">Register</Link></li>
 </ul>
