@@ -58,24 +58,6 @@ The project demonstrates **REST API development, authentication, role-based auth
 
 ---
 
-# 📸 Project Screenshots
-
-### Home Page
-
-![Home](./screenshots/home.png)
-
-### Job Listings
-
-![Jobs](./screenshots/jobs.png)
-
-### Job Application
-
-![Apply](./screenshots/apply.png)
-
-### Recruiter Dashboard
-
-![Dashboard](./screenshots/dashboard.png)
-
 > Create a folder named **screenshots** in your repo and add images there.
 
 Example:
@@ -258,7 +240,6 @@ npm run dev
 
 # 📈 Future Improvements
 
-* Resume upload feature
 * Email notifications
 * Admin dashboard
 * Advanced job filtering
