@@ -13,7 +13,7 @@ This platform allows recruiters to post jobs and candidates to apply for jobs se
 ---
 
 ## 🌐 Live Demo
-https://job-portal-ps74.vercel.app/
+https://careerhive-portal.vercel.app/
 
 ---
 
